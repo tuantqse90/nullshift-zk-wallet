@@ -1,0 +1,7 @@
+[package]
+name = "anonymous_swap"
+type = "bin"
+authors = ["NullShift Labs"]
+compiler_version = ">=0.30.0"
+
+[dependencies]

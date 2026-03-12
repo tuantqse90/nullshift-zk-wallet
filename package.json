@@ -1,0 +1,28 @@
+{
+  "name": "nullshift-wallet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NullShift ZK Privacy Wallet — shielded transfers, private balances, anonymous DeFi",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "dev": "turbo run dev",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "dev:local": "cd packages/contracts && ./deploy/dev.sh",
+    "demo": "cd packages/sdk && ./node_modules/.bin/tsx scripts/demo.ts",
+    "test:circuits": "cd packages/circuits && for d in */; do (cd \"$d\" && nargo test); done",
+    "test:contracts": "cd packages/contracts && forge test",
+    "test:sdk": "cd packages/sdk && pnpm vitest run",
+    "test:all": "pnpm test:circuits && pnpm test:contracts && pnpm test:sdk"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "prettier": "^3.2.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

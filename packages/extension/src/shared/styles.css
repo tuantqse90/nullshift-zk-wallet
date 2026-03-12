@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NullShift base styles — dark mode only */
+body {
+  @apply bg-ns-bg-primary text-ns-text font-sans;
+  margin: 0;
+  padding: 0;
+}
+
+/* Terminal-style scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-ns-bg-primary;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-ns-border rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ns-text-dim;
+}
+
+/* Utility classes */
+.btn {
+  @apply font-mono text-sm px-4 py-2 rounded-md transition-all duration-150 cursor-pointer;
+}
+.btn-primary {
+  @apply bg-ns-primary text-ns-bg-primary;
+}
+.btn-primary:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.15);
+}
+.btn-ghost {
+  @apply border border-ns-border text-ns-text hover:border-ns-primary hover:text-ns-primary;
+}
+.btn-danger {
+  @apply border border-ns-accent text-ns-accent hover:bg-ns-accent hover:text-white;
+}
+
+/* Terminal prompt */
+.terminal-prompt::before {
+  content: 'nullshift@labs$ ';
+  @apply text-ns-primary font-mono;
+}
+
+/* Status tags */
+.status-live {
+  @apply text-ns-primary font-mono text-xs;
+}
+.status-building {
+  @apply text-ns-warning font-mono text-xs;
+}
+.status-pending {
+  @apply text-ns-secondary font-mono text-xs;
+}
+.status-failed {
+  @apply text-ns-accent font-mono text-xs;
+}
