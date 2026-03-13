@@ -17,5 +17,5 @@ export const SHIELDED_POOL_ABI = [
 
 export const RELAYER_ABI = [
   'function executeSwap(bytes calldata proof, tuple(bytes32 nullifier, bytes32 swapCommitment, bytes32 changeCommitment, bytes32 outputCommitment, address tokenIn, address tokenOut, uint256 swapAmount, uint256 minOutputAmount, uint256 relayerFee, bytes32 root) params) external',
-  'event SwapExecuted(bytes32 indexed nullifier, address tokenIn, address tokenOut, uint256 amountOut, uint256 relayerFee, uint256 timestamp)',
+  'event SwapExecuted(bytes32 indexed nullifier, uint256 timestamp)',
 ] as const;

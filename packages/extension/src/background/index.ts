@@ -6,9 +6,9 @@
 // ============================================================
 
 import type { Message, MessageType } from '@nullshift/common';
-import type { EncryptedVault, OwnedNote } from '@nullshift/common';
-import { AUTO_LOCK_TIMEOUT_MS, NETWORKS } from '@nullshift/common';
-import { KeyManager } from '@nullshift/sdk';
+import type { EncryptedVault, OwnedNote, Bytes32, Address } from '@nullshift/common';
+import { AUTO_LOCK_TIMEOUT_MS, NETWORKS, ETH_ADDRESS } from '@nullshift/common';
+import { KeyManager, SHIELDED_POOL_ABI, computeCommitment, computeNullifier, randomFieldElement, initBarretenberg } from '@nullshift/sdk';
 import { ethers } from 'ethers';
 
 // ---- State ----
@@ -184,23 +184,149 @@ async function handleMessage(
 
     case 'SHIELD_FUNDS': {
       if (!keyManager.isUnlocked()) throw new Error('Wallet is locked');
-      const { amount } = message.payload as { amount: bigint; token: string };
+      const depositPayload = message.payload as { amount: bigint; token: string };
+      const depositAmount = BigInt(depositPayload.amount);
 
-      // For now, return the computed commitment info
-      // Full deposit flow requires Barretenberg (runs in offscreen)
+      // Initialize Barretenberg for crypto ops
+      await initBarretenberg();
+
       const keys = keyManager.getKeys();
+
+      // Derive ZK public key from spending key
+      const { derivePublicKey } = await import('@nullshift/sdk');
+      const ownerPubkey = await derivePublicKey(keys.spendingKey);
+
+      // Generate random salt and compute commitment
+      const salt = randomFieldElement();
+      const commitment = await computeCommitment(ownerPubkey, depositAmount, salt);
+
+      // Submit on-chain deposit transaction
+      const signer = await getSigner();
+      const pool = await getPoolContract(signer);
+      const tx = await pool.deposit(commitment, { value: depositAmount });
+      const receipt = await tx.wait();
+
+      // Parse leaf index from Deposit event
+      let leafIndex = -1;
+      for (const log of receipt.logs) {
+        try {
+          const parsed = pool.interface.parseLog({ topics: log.topics as string[], data: log.data });
+          if (parsed?.name === 'Deposit') {
+            leafIndex = Number(parsed.args[1]);
+          }
+        } catch {
+          // Not our event
+        }
+      }
+
+      // Compute nullifier for this note
+      const nullifier = await computeNullifier(commitment, keys.spendingKey);
+
+      // Store note locally
+      const newNote: OwnedNote = {
+        commitment: commitment as Bytes32,
+        amount: depositAmount,
+        salt: salt as Bytes32,
+        ownerPubkey: ownerPubkey as Bytes32,
+        leafIndex,
+        token: (depositPayload.token || ETH_ADDRESS) as Address,
+        spent: false,
+        nullifier: nullifier as Bytes32,
+        merklePath: { pathIndex: leafIndex, siblings: [] },
+      };
+      notes.push(newNote);
+      await saveNotes();
+
       return {
-        txHash: '',
-        commitment: '0x',
-        leafIndex: 0,
-        address: keys.ethAddress,
-        amount: amount.toString(),
+        txHash: receipt.hash,
+        commitment,
+        leafIndex,
       };
     }
 
     case 'UNSHIELD_FUNDS': {
       if (!keyManager.isUnlocked()) throw new Error('Wallet is locked');
-      return { txHash: '', nullifier: '0x' };
+      const withdrawPayload = message.payload as { amount: bigint; recipient: string; token: string };
+      const withdrawAmount = BigInt(withdrawPayload.amount);
+      const recipient = withdrawPayload.recipient as Address;
+
+      await initBarretenberg();
+
+      const wKeys = keyManager.getKeys();
+
+      // Find a note with sufficient balance
+      const unspentNotes = notes.filter((n) => !n.spent && n.amount >= withdrawAmount);
+      if (unspentNotes.length === 0) throw new Error('Insufficient shielded balance');
+      const spendNote = unspentNotes[0]!;
+
+      // Get current Merkle root
+      const pool = await getPoolContract();
+      const root = await pool.getMerkleRoot() as string;
+
+      // Compute change commitment if partial withdrawal
+      const change = spendNote.amount - withdrawAmount;
+      let changeCommitment: Bytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Bytes32;
+
+      if (change > 0n) {
+        const { derivePublicKey: derivePub } = await import('@nullshift/sdk');
+        const ownerPub = await derivePub(wKeys.spendingKey);
+        const changeSalt = randomFieldElement();
+        changeCommitment = await computeCommitment(ownerPub, change, changeSalt) as Bytes32;
+
+        // Store change note
+        const changeNullifier = await computeNullifier(changeCommitment, wKeys.spendingKey);
+        notes.push({
+          commitment: changeCommitment,
+          amount: change,
+          salt: changeSalt as Bytes32,
+          ownerPubkey: ownerPub as Bytes32,
+          leafIndex: -1, // Will be updated after tree sync
+          token: (withdrawPayload.token || ETH_ADDRESS) as Address,
+          spent: false,
+          nullifier: changeNullifier as Bytes32,
+          merklePath: { pathIndex: -1, siblings: [] },
+        });
+      }
+
+      // Generate ZK proof via offscreen document
+      await ensureOffscreen();
+      const proofResult = await chrome.runtime.sendMessage({
+        type: 'GENERATE_PROOF',
+        payload: {
+          circuit: 'withdraw',
+          inputs: {
+            root,
+            nullifier: spendNote.nullifier,
+            recipient,
+            amount: withdrawAmount.toString(),
+            changeCommitment,
+            secretKey: wKeys.spendingKey,
+            salt: spendNote.salt,
+            merklePath: spendNote.merklePath,
+          },
+        },
+      });
+
+      if (proofResult?.error) throw new Error(proofResult.error);
+
+      // Submit withdraw transaction
+      const wSigner = await getSigner();
+      const wPool = await getPoolContract(wSigner);
+      const wTx = await wPool.withdraw(
+        proofResult.proof,
+        spendNote.nullifier,
+        recipient,
+        withdrawAmount,
+        root,
+        changeCommitment,
+      );
+      const wReceipt = await wTx.wait();
+
+      // Mark note as spent
+      spendNote.spent = true;
+      await saveNotes();
+
+      return { txHash: wReceipt.hash, nullifier: spendNote.nullifier };
     }
 
     // ---- Proof Generation ----
@@ -232,8 +358,41 @@ async function handleMessage(
       return { synced: notes.length };
 
     // ---- Tree ----
-    case 'SYNC_TREE':
-      return { newLeaves: 0 };
+    case 'SYNC_TREE': {
+      try {
+        const pool = await getPoolContract();
+        const nextIndex = Number(await pool.getNextLeafIndex());
+        const currentRoot = await pool.getMerkleRoot() as string;
+
+        // Scan for deposit events to find our notes' leaf indices
+        // Update any notes with leafIndex === -1
+        const pendingNotes = notes.filter((n) => n.leafIndex === -1);
+        if (pendingNotes.length > 0) {
+          const depositFilter = pool.filters['Deposit']!();
+          const events = await pool.queryFilter(depositFilter, 0, 'latest');
+
+          for (const event of events) {
+            const parsed = pool.interface.parseLog({ topics: event.topics as string[], data: event.data });
+            if (!parsed) continue;
+            const commitment = parsed.args[0] as string;
+            const leafIdx = Number(parsed.args[1]);
+
+            for (const note of pendingNotes) {
+              if (note.commitment.toLowerCase() === commitment.toLowerCase()) {
+                note.leafIndex = leafIdx;
+                note.merklePath.pathIndex = leafIdx;
+              }
+            }
+          }
+
+          await saveNotes();
+        }
+
+        return { newLeaves: nextIndex, root: currentRoot };
+      } catch {
+        return { newLeaves: 0 };
+      }
+    }
 
     // ---- dApp Interaction ----
     case 'DAPP_CONNECT':
@@ -278,6 +437,34 @@ async function handleMessage(
     default:
       throw new Error(`Unknown message type: ${message.type}`);
   }
+}
+
+// ---- Contract Helpers ----
+
+async function getNetworkConfig() {
+  const netStored = await chrome.storage.local.get(NETWORK_KEY);
+  const net = netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+  const config = NETWORKS[net.chainId as keyof typeof NETWORKS];
+  return config;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getPoolContract(signer?: ethers.Signer): Promise<ethers.Contract & Record<string, any>> {
+  const config = await getNetworkConfig();
+  if (!config) throw new Error('Network not configured');
+  const addr = config.contracts.shieldedPool;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error('ShieldedPool not deployed on this network');
+  }
+  const signerOrProvider = signer ?? await getProvider();
+  // Cast to Record to avoid TS2722 on dynamic method calls
+  return new ethers.Contract(addr, SHIELDED_POOL_ABI, signerOrProvider) as ethers.Contract & Record<string, any>;
+}
+
+async function getSigner(): Promise<ethers.Wallet> {
+  const keys = keyManager.getKeys();
+  const provider = await getProvider();
+  return new ethers.Wallet(keys.ethPrivateKey, provider);
 }
 
 // ---- Balance Helpers ----
