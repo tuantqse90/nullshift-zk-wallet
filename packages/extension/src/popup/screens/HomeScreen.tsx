@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useWalletStore } from '../../shared/state/walletStore';
 import { sendToBackground } from '../../shared/utils/messaging';
 import type { ChainId, ActivityEntry } from '@nullshift/common';
@@ -242,6 +243,13 @@ function ShieldModal({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [gasCost, setGasCost] = useState('');
+
+  useEffect(() => {
+    sendToBackground('GET_GAS_ESTIMATE', { type: 'shield' as const }, 'popup')
+      .then((res) => setGasCost((res as { estimatedCost: string }).estimatedCost))
+      .catch(() => {});
+  }, []);
 
   const handleShield = async () => {
     if (!amount) return;
@@ -271,6 +279,12 @@ function ShieldModal({ onClose }: { onClose: () => void }) {
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
         autoFocus
       />
+      {gasCost && (
+        <div className="font-mono text-xs text-ns-text-dim mb-3 flex justify-between">
+          <span>// est. gas</span>
+          <span className="text-ns-text-DEFAULT">~{gasCost}</span>
+        </div>
+      )}
       {status && (
         <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
       )}
@@ -290,6 +304,13 @@ function SendModal({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [gasCost, setGasCost] = useState('');
+
+  useEffect(() => {
+    sendToBackground('GET_GAS_ESTIMATE', { type: 'send' as const }, 'popup')
+      .then((res) => setGasCost((res as { estimatedCost: string }).estimatedCost))
+      .catch(() => {});
+  }, []);
 
   const handleSend = async () => {
     if (!recipient || !amount) return;
@@ -327,6 +348,12 @@ function SendModal({ onClose }: { onClose: () => void }) {
         placeholder="Amount"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
       />
+      {gasCost && (
+        <div className="font-mono text-xs text-ns-text-dim mb-3 flex justify-between">
+          <span>// est. gas + proof</span>
+          <span className="text-ns-text-DEFAULT">~{gasCost}</span>
+        </div>
+      )}
       {status && (
         <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
       )}
@@ -346,6 +373,13 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [gasCost, setGasCost] = useState('');
+
+  useEffect(() => {
+    sendToBackground('GET_GAS_ESTIMATE', { type: 'withdraw' as const }, 'popup')
+      .then((res) => setGasCost((res as { estimatedCost: string }).estimatedCost))
+      .catch(() => {});
+  }, []);
 
   const handleUnshield = async () => {
     if (!recipient || !amount) return;
@@ -383,6 +417,12 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
         placeholder="Amount"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
       />
+      {gasCost && (
+        <div className="font-mono text-xs text-ns-text-dim mb-3 flex justify-between">
+          <span>// est. gas + proof</span>
+          <span className="text-ns-text-DEFAULT">~{gasCost}</span>
+        </div>
+      )}
       {status && (
         <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
       )}
@@ -411,9 +451,24 @@ function ReceiveModal({ address, onClose }: { address: string; onClose: () => vo
     <ModalOverlay title="// receive" onClose={onClose}>
       <p className="font-mono text-xs text-ns-text-dim mb-3">// your shielded address</p>
 
+      {/* QR Code */}
+      {address && (
+        <div className="flex justify-center mb-4">
+          <div className="bg-white p-3 rounded border-2 border-ns-primary">
+            <QRCodeSVG
+              value={address}
+              size={160}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              level="M"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Address display */}
-      <div className="bg-ns-bg-card border border-ns-border rounded p-4 mb-4">
-        <p className="font-mono text-sm text-ns-text-bright break-all leading-relaxed text-center">
+      <div className="bg-ns-bg-card border border-ns-border rounded p-3 mb-4">
+        <p className="font-mono text-xs text-ns-text-bright break-all leading-relaxed text-center">
           {address || '---'}
         </p>
       </div>

@@ -524,6 +524,29 @@ async function handleMessage(
       return { success: true };
     }
 
+    // ---- Gas ----
+    case 'GET_GAS_ESTIMATE': {
+      const gasPayload = message.payload as { type: 'shield' | 'send' | 'withdraw' };
+      const provider = await getProvider();
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice ?? BigInt(0);
+      // Rough gas estimates per operation
+      const gasLimits: Record<string, bigint> = {
+        shield: BigInt(200_000),
+        send: BigInt(500_000),
+        withdraw: BigInt(400_000),
+      };
+      const gasLimit = gasLimits[gasPayload.type] ?? BigInt(300_000);
+      const cost = gasPrice * gasLimit;
+      const config = await getNetworkConfig();
+      const sym = config?.nativeCurrency?.symbol ?? 'ETH';
+      return {
+        gasPrice: (Number(gasPrice) / 1e9).toFixed(2) + ' gwei',
+        estimatedCost: (Number(cost) / 1e18).toFixed(6) + ' ' + sym,
+        symbol: sym,
+      };
+    }
+
     // ---- Settings ----
     case 'GET_SETTINGS':
       return {};

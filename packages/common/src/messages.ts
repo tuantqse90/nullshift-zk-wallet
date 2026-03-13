@@ -71,6 +71,8 @@ export type MessageType =
   // Network
   | 'GET_NETWORK'
   | 'SWITCH_NETWORK'
+  // Gas
+  | 'GET_GAS_ESTIMATE'
   // Settings
   | 'GET_SETTINGS'
   | 'UPDATE_SETTINGS';
@@ -123,6 +125,9 @@ export interface PayloadMap {
   GET_NETWORK: undefined;
   SWITCH_NETWORK: { chainId: ChainId; name: string };
 
+  // Gas
+  GET_GAS_ESTIMATE: { type: 'shield' | 'send' | 'withdraw' };
+
   // Settings
   GET_SETTINGS: undefined;
   UPDATE_SETTINGS: Record<string, unknown>;
@@ -166,6 +171,8 @@ export interface ResponseMap {
 
   GET_NETWORK: NetworkConfig;
   SWITCH_NETWORK: { success: boolean };
+
+  GET_GAS_ESTIMATE: { gasPrice: string; estimatedCost: string; symbol: string };
 
   GET_SETTINGS: Record<string, unknown>;
   UPDATE_SETTINGS: { success: boolean };
