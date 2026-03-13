@@ -17,6 +17,7 @@ const keyManager = new KeyManager();
 const notes: OwnedNote[] = [];
 const activityLog: ActivityEntry[] = [];
 let notesEncryptionKey: CryptoKey | null = null;
+const connectedSites: Set<string> = new Set(); // connected dApp origins
 
 // ---- Storage Keys ----
 const VAULT_KEY = 'nullshift_vault';
@@ -78,7 +79,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
 
 async function handleMessage(
   message: Message,
-  _sender: chrome.runtime.MessageSender,
+  sender: chrome.runtime.MessageSender,
 ): Promise<unknown> {
   resetAutoLock();
 
@@ -495,8 +496,11 @@ async function handleMessage(
     case 'DAPP_CONNECT':
       return { approved: false };
 
-    case 'DAPP_REQUEST':
-      return { result: null };
+    case 'DAPP_REQUEST': {
+      const dappPayload = message.payload as { method: string; params?: unknown[] };
+      const senderOrigin = sender?.origin ?? sender?.url ?? '';
+      return handleDappRequest(dappPayload.method, dappPayload.params ?? [], senderOrigin);
+    }
 
     // ---- Network ----
     case 'GET_NETWORK': {
@@ -557,6 +561,78 @@ function addActivity(
   activityLog.unshift(entry);
   if (activityLog.length > 500) activityLog.length = 500;
   broadcastToUI({ type: 'NEW_ACTIVITY', payload: entry });
+}
+
+// ---- dApp Request Handler ----
+
+async function handleDappRequest(
+  method: string,
+  params: unknown[],
+  origin: string,
+): Promise<{ result?: unknown; error?: string }> {
+  const addr = keyManager.getAddress();
+
+  switch (method) {
+    case 'eth_requestAccounts': {
+      if (!addr) return { error: 'Wallet locked' };
+      connectedSites.add(origin);
+      addActivity('DAPP', `Connected: ${new URL(origin).hostname || origin}`);
+      return { result: [addr] };
+    }
+
+    case 'eth_accounts': {
+      if (!addr || !connectedSites.has(origin)) return { result: [] };
+      return { result: [addr] };
+    }
+
+    case 'eth_chainId': {
+      const config = await getNetworkConfig();
+      return { result: `0x${(config?.chainId ?? 143).toString(16)}` };
+    }
+
+    case 'net_version': {
+      const config = await getNetworkConfig();
+      return { result: String(config?.chainId ?? 143) };
+    }
+
+    case 'eth_getBalance': {
+      const target = (params[0] as string) ?? addr;
+      if (!target) return { error: 'No address' };
+      const provider = await getProvider();
+      const balance = await provider.getBalance(target);
+      return { result: `0x${balance.toString(16)}` };
+    }
+
+    case 'eth_blockNumber': {
+      const provider = await getProvider();
+      const block = await provider.getBlockNumber();
+      return { result: `0x${block.toString(16)}` };
+    }
+
+    case 'wallet_switchEthereumChain': {
+      const chainParam = params[0] as { chainId: string } | undefined;
+      if (!chainParam?.chainId) return { error: 'Missing chainId' };
+      const requestedChainId = parseInt(chainParam.chainId, 16);
+      const config = NETWORKS[requestedChainId as keyof typeof NETWORKS];
+      if (!config) return { error: `Chain ${requestedChainId} not supported` };
+      await chrome.storage.local.set({ [NETWORK_KEY]: { chainId: requestedChainId, name: config.name } });
+      cachedProvider = null;
+      cachedRpcUrl = null;
+      broadcastToUI({ type: 'SWITCH_NETWORK', payload: { chainId: requestedChainId, name: config.name } });
+      return { result: null };
+    }
+
+    case 'personal_sign':
+    case 'eth_sign':
+    case 'eth_signTypedData_v4':
+      return { error: 'Signing not yet supported — use shielded transfers' };
+
+    case 'eth_sendTransaction':
+      return { error: 'Direct transactions not supported — use Shield/Send/Unshield' };
+
+    default:
+      return { error: `Unsupported method: ${method}` };
+  }
 }
 
 // ---- Contract Helpers ----

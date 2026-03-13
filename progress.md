@@ -39,6 +39,11 @@
 | 2026-03-13 | GitHub repo created | Done | All files | https://github.com/tuantqse90/nullshift-zk-wallet — 6 commits pushed |
 | 2026-03-13 | Monad mainnet migration | Done | types.ts, constants.ts, Deploy.s.sol, deploy-monad.sh, background, walletStore, dashboard, README | ChainId 143, rpc.monad.xyz, monadscan.com, default network = Monad |
 | 2026-03-13 | Monad mainnet deployment | Done | constants.ts, deployments/monad.json | 6 contracts live on Monad, ~2.09 MON gas, 6/6 verified on-chain |
+| 2026-03-13 | Sourcify contract verification | Done | 6 contracts | All exact_match on Sourcify (MonadVision) |
+| 2026-03-13 | GitHub Actions CI | Done | .github/workflows/ci.yml | Lint (tsc + eslint), build, test SDK + contracts |
+| 2026-03-13 | Popup UI upgrade | Done | HomeScreen.tsx | Receive modal, 5 action buttons, real activity feed, live NEW_ACTIVITY listener |
+| 2026-03-13 | Dashboard upgrade | Done | dashboard/App.tsx | DeFi Hub tab (swap UI), Settings 2-col grid, privacy badges, seed section |
+| 2026-03-13 | ESLint setup | Done | eslint.config.mjs, package.json | ESLint 9 flat config, TS + React + hooks rules, 0 errors/11 warnings |
 
 ### Decision Log
 

@@ -109,12 +109,41 @@ export function SidePanelApp() {
         )}
       </div>
 
-      {/* Privacy Status Footer */}
+      {/* Privacy Dashboard Footer */}
       <div className="px-4 py-3 border-t border-ns-border">
-        <p className="font-mono text-xs text-ns-text-dim">// privacy status</p>
-        <div className="flex justify-between mt-1">
+        <p className="font-mono text-xs text-ns-text-dim mb-2">// privacy dashboard</p>
+        <div className="flex justify-between">
           <span className="font-mono text-xs text-ns-text-DEFAULT">Notes: {unspentCount}</span>
           <span className="font-mono text-xs text-ns-text-DEFAULT">Anonymity set: {notes.length}</span>
+        </div>
+
+        {/* Recommendations */}
+        <div className="mt-2 pt-2 border-t border-ns-border space-y-1">
+          {unspentCount === 0 && (
+            <p className="font-mono text-xs text-ns-secondary">
+              &gt; Shield funds to start building privacy
+            </p>
+          )}
+          {unspentCount > 0 && unspentCount < 3 && (
+            <p className="font-mono text-xs text-ns-secondary">
+              &gt; Make more shielded txs to grow anonymity set
+            </p>
+          )}
+          {unspentCount > 5 && (
+            <p className="font-mono text-xs text-ns-secondary">
+              &gt; Consider merging notes to reduce UTXO count
+            </p>
+          )}
+          {notes.length >= 3 && (
+            <p className="font-mono text-xs text-ns-primary">
+              [GOOD] Anonymity set growing
+            </p>
+          )}
+          {activity.length === 0 && (
+            <p className="font-mono text-xs text-ns-text-dim">
+              // No activity yet — start shielding
+            </p>
+          )}
         </div>
       </div>
     </div>
