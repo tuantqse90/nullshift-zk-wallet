@@ -35,6 +35,8 @@
 | 2026-03-13 | Multi-network extension support | Done | dashboard/App.tsx, HomeScreen.tsx, background/index.ts, messages.ts | Network selector, network-aware provider, SWITCH_NETWORK with name |
 | 2026-03-13 | Real transaction flows | Done | background/index.ts, webpack.config.js, abi.ts | Deposit: commitment + on-chain tx + note storage; Withdraw: UTXO select + ZK proof + tx; Transfer: 2-input UTXO + proof + transact; Tree sync from events |
 | 2026-03-13 | Circuit artifacts bundled | Done | webpack.config.js | 4 Noir circuit JSONs copied to dist/circuits/ for offscreen proof gen |
+| 2026-03-13 | Activity logging | Done | background/index.ts | Shield/Send/Withdraw/Proof events logged, GET_ACTIVITY returns real data |
+| 2026-03-13 | GitHub repo created | Done | All files | https://github.com/tuantqse90/nullshift-zk-wallet — 6 commits pushed |
 
 ### Decision Log
 
