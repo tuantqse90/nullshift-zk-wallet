@@ -39,6 +39,9 @@ export function HomeScreen() {
     sendToBackground('GET_ACTIVITY', { limit: 5 }, 'popup')
       .then((res) => setActivities(res.entries ?? []))
       .catch(console.error);
+
+    // Auto-sync tree on popup open
+    sendToBackground('SYNC_TREE', undefined, 'popup').catch(() => {});
   }, []);
 
   // Listen for new activity from background

@@ -65,6 +65,9 @@ export function DashboardApp() {
       })
       .catch(console.error);
 
+    // Auto-sync Merkle tree from chain
+    sendToBackground('SYNC_TREE', undefined, 'dashboard').catch(() => {});
+
     // Listen for background events
     onMessage((message) => {
       if (message.type === 'LOCK_WALLET') setLocked(true);
