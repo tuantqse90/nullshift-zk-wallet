@@ -3,7 +3,7 @@ import { useWalletStore } from '../shared/state/walletStore';
 import { sendToBackground, onMessage } from '../shared/utils/messaging';
 import type { ActivityEntry, ChainId, OwnedNote } from '@nullshift/common';
 
-type Tab = 'portfolio' | 'notes' | 'activity' | 'settings';
+type Tab = 'portfolio' | 'notes' | 'activity' | 'defi' | 'settings';
 
 export function DashboardApp() {
   const {
@@ -123,7 +123,7 @@ export function DashboardApp() {
           <span className="font-mono text-xs text-ns-secondary">{networkName}</span>
         </div>
         <nav className="flex gap-6 font-mono text-sm">
-          {(['portfolio', 'notes', 'activity', 'settings'] as Tab[]).map((t) => (
+          {(['portfolio', 'notes', 'activity', 'defi', 'settings'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -159,6 +159,7 @@ export function DashboardApp() {
         )}
         {tab === 'notes' && <NotesTab notes={notes} />}
         {tab === 'activity' && <ActivityTab activity={activity} />}
+        {tab === 'defi' && <DeFiTab />}
         {tab === 'settings' && <SettingsTab networkName={networkName} address={address} />}
       </main>
     </div>
@@ -334,6 +335,105 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
   );
 }
 
+// ---- DeFi Tab ----
+function DeFiTab() {
+  const [fromToken, setFromToken] = useState('ETH');
+  const [toToken, setToToken] = useState('USDC');
+  const [amount, setAmount] = useState('');
+
+  return (
+    <>
+      <h2 className="font-mono text-lg text-ns-text-bright mb-4">// anonymous swap</h2>
+
+      <div className="max-w-lg">
+        <div className="bg-ns-bg-card border border-ns-border rounded-lg p-6">
+          <p className="font-mono text-xs text-ns-text-dim mb-4">
+            // swap through relayer — no address link
+          </p>
+
+          {/* From */}
+          <div className="mb-4">
+            <p className="font-mono text-xs text-ns-text-dim mb-1">From</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.0"
+                className="flex-1 bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none"
+              />
+              <select
+                value={fromToken}
+                onChange={(e) => setFromToken(e.target.value)}
+                className="bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright focus:border-ns-primary focus:outline-none"
+              >
+                <option>ETH</option>
+                <option>USDC</option>
+                <option>WETH</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Swap arrow */}
+          <div className="text-center my-2">
+            <span className="font-mono text-ns-text-dim">↓</span>
+          </div>
+
+          {/* To */}
+          <div className="mb-4">
+            <p className="font-mono text-xs text-ns-text-dim mb-1">To</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={amount ? '—' : ''}
+                placeholder="0.0"
+                className="flex-1 bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-dim"
+              />
+              <select
+                value={toToken}
+                onChange={(e) => setToToken(e.target.value)}
+                className="bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright focus:border-ns-primary focus:outline-none"
+              >
+                <option>USDC</option>
+                <option>ETH</option>
+                <option>WETH</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Swap details */}
+          <div className="border-t border-ns-border pt-3 mb-4 space-y-1">
+            <div className="flex justify-between font-mono text-xs">
+              <span className="text-ns-text-dim">Slippage</span>
+              <span className="text-ns-text-DEFAULT">0.5%</span>
+            </div>
+            <div className="flex justify-between font-mono text-xs">
+              <span className="text-ns-text-dim">Relayer fee</span>
+              <span className="text-ns-text-DEFAULT">~0.1%</span>
+            </div>
+            <div className="flex justify-between font-mono text-xs">
+              <span className="text-ns-text-dim">Privacy</span>
+              <span className="text-ns-primary">[SHIELDED]</span>
+            </div>
+          </div>
+
+          <button
+            disabled
+            className="btn btn-primary w-full disabled:opacity-40"
+          >
+            &gt; Swap (coming soon)
+          </button>
+
+          <p className="font-mono text-xs text-ns-text-dim mt-3 text-center">
+            // requires DEX router on Monad
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ---- Settings Tab ----
 
 const AVAILABLE_NETWORKS = [
@@ -352,6 +452,8 @@ function SettingsTab({
 }) {
   const { setChain } = useWalletStore();
   const [switching, setSwitching] = useState(false);
+  const [showSeed, setShowSeed] = useState(false);
+  const [copiedAddr, setCopiedAddr] = useState(false);
 
   const handleLock = () => {
     sendToBackground('LOCK_WALLET', undefined, 'dashboard').catch(console.error);
@@ -370,11 +472,19 @@ function SettingsTab({
     }
   };
 
+  const handleCopyAddress = async () => {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    setCopiedAddr(true);
+    setTimeout(() => setCopiedAddr(false), 2000);
+  };
+
   return (
     <>
       <h2 className="font-mono text-lg text-ns-text-bright mb-4">// settings</h2>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        {/* Network */}
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
           <p className="font-mono text-xs text-ns-text-dim mb-3">Network</p>
           <div className="space-y-2">
@@ -396,25 +506,100 @@ function SettingsTab({
           </div>
         </div>
 
-        <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
-          <p className="font-mono text-xs text-ns-text-dim mb-2">Address</p>
-          <p className="font-mono text-sm text-ns-text-bright break-all">{address ?? '---'}</p>
+        {/* Key Management */}
+        <div className="space-y-4">
+          <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
+            <p className="font-mono text-xs text-ns-text-dim mb-2">Address</p>
+            <p className="font-mono text-sm text-ns-text-bright break-all mb-2">{address ?? '---'}</p>
+            <button onClick={handleCopyAddress} className="btn btn-ghost text-xs">
+              {copiedAddr ? '> Copied!' : '> Copy Address'}
+            </button>
+          </div>
+
+          <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
+            <p className="font-mono text-xs text-ns-text-dim mb-2">Seed Phrase</p>
+            {showSeed ? (
+              <>
+                <p className="font-mono text-xs text-ns-accent mb-2">
+                  // WARNING: Never share your seed phrase
+                </p>
+                <div className="bg-ns-bg-primary border border-ns-accent rounded p-3 mb-2">
+                  <p className="font-mono text-xs text-ns-text-bright">
+                    Seed export not available in v0.1.
+                  </p>
+                  <p className="font-mono text-xs text-ns-text-dim mt-1">
+                    // Wallet uses HD derivation from encrypted vault
+                  </p>
+                </div>
+                <button onClick={() => setShowSeed(false)} className="btn btn-ghost text-xs">
+                  &gt; Hide
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setShowSeed(true)} className="btn btn-ghost text-xs">
+                &gt; Show Seed Phrase
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Security */}
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
-          <p className="font-mono text-xs text-ns-text-dim mb-2">Security</p>
-          <button
-            onClick={handleLock}
-            className="btn btn-ghost text-xs"
-          >
-            &gt; Lock wallet
-          </button>
+          <p className="font-mono text-xs text-ns-text-dim mb-3">Security</p>
+          <div className="space-y-2">
+            <button onClick={handleLock} className="btn btn-ghost text-xs w-full text-left">
+              &gt; Lock wallet
+            </button>
+            <div className="font-mono text-xs space-y-1 mt-3 text-ns-text-dim">
+              <p>Vault: PBKDF2 600k + AES-256-GCM</p>
+              <p>Auto-lock: 15 minutes</p>
+              <p>Notes: Encrypted at rest</p>
+            </div>
+          </div>
         </div>
 
+        {/* Privacy */}
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
+          <p className="font-mono text-xs text-ns-text-dim mb-3">Privacy</p>
+          <div className="font-mono text-xs space-y-2">
+            <div className="flex justify-between">
+              <span className="text-ns-text-dim">Analytics</span>
+              <span className="text-ns-primary">[DISABLED]</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ns-text-dim">Tracking</span>
+              <span className="text-ns-primary">[NONE]</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ns-text-dim">Events</span>
+              <span className="text-ns-primary">[PRIVACY-SAFE]</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ns-text-dim">Proofs</span>
+              <span className="text-ns-primary">[CLIENT-SIDE]</span>
+            </div>
+            <p className="text-ns-text-dim mt-2 pt-2 border-t border-ns-border">
+              // No data leaves your device.<br />
+              // ZK proofs generated locally via WASM.
+            </p>
+          </div>
+        </div>
+
+        {/* About */}
+        <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4 col-span-2">
           <p className="font-mono text-xs text-ns-text-dim mb-2">About</p>
-          <p className="font-mono text-xs text-ns-text-DEFAULT">NullShift ZK Privacy Wallet v0.1.0</p>
-          <p className="font-mono text-xs text-ns-text-dim mt-1">Noir + UltraPlonk + Barretenberg WASM</p>
+          <div className="grid grid-cols-2 gap-x-8 font-mono text-xs">
+            <div className="space-y-1">
+              <p className="text-ns-text-DEFAULT">NullShift ZK Privacy Wallet v0.1.0</p>
+              <p className="text-ns-text-dim">Noir circuits + UltraPlonk verifiers</p>
+              <p className="text-ns-text-dim">Barretenberg WASM proof engine</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-ns-text-dim">Chain: Monad (143)</p>
+              <p className="text-ns-text-dim">Pool: {address ? '0x6ee4...d76e' : '---'}</p>
+              <p className="text-ns-text-dim">Contracts: Sourcify verified</p>
+            </div>
+          </div>
         </div>
       </div>
     </>
