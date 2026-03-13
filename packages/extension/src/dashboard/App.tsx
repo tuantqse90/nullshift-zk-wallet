@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '../shared/state/walletStore';
 import { sendToBackground, onMessage } from '../shared/utils/messaging';
-import type { ActivityEntry, ChainId, OwnedNote } from '@nullshift/common';
+import type { ActivityEntry, ChainId, OwnedNote, NetworkConfig } from '@nullshift/common';
 
 type Tab = 'portfolio' | 'notes' | 'activity' | 'defi' | 'settings';
 
@@ -12,6 +12,7 @@ export function DashboardApp() {
     shieldedBalance,
     publicBalance,
     networkName,
+    nativeSymbol,
     notes,
     activity,
     provingCircuit,
@@ -42,7 +43,7 @@ export function DashboardApp() {
     sendToBackground('GET_NETWORK', undefined, 'dashboard')
       .then((net) => {
         if (net?.chainId && net?.name) {
-          setChain(net.chainId as ChainId, net.name as string);
+          setChain(net.chainId as ChainId, net.name as string, (net as NetworkConfig).nativeCurrency?.symbol);
         }
       })
       .catch(console.error);
@@ -155,9 +156,10 @@ export function DashboardApp() {
             publicBalance={publicBalance}
             privacyScore={privacyScore}
             noteCount={unspentNotes.length}
+            symbol={nativeSymbol}
           />
         )}
-        {tab === 'notes' && <NotesTab notes={notes} />}
+        {tab === 'notes' && <NotesTab notes={notes} symbol={nativeSymbol} />}
         {tab === 'activity' && <ActivityTab activity={activity} />}
         {tab === 'defi' && <DeFiTab />}
         {tab === 'settings' && <SettingsTab networkName={networkName} address={address} />}
@@ -172,11 +174,13 @@ function PortfolioTab({
   publicBalance,
   privacyScore,
   noteCount,
+  symbol,
 }: {
   shieldedBalance: string;
   publicBalance: string;
   privacyScore: number;
   noteCount: number;
+  symbol: string;
 }) {
   return (
     <>
@@ -184,11 +188,11 @@ function PortfolioTab({
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
           <p className="font-mono text-xs text-ns-text-dim">Shielded Balance</p>
-          <p className="font-mono text-2xl text-ns-primary mt-1">{shieldedBalance} ETH</p>
+          <p className="font-mono text-2xl text-ns-primary mt-1">{shieldedBalance} {symbol}</p>
         </div>
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
           <p className="font-mono text-xs text-ns-text-dim">Public Balance</p>
-          <p className="font-mono text-2xl text-ns-text-bright mt-1">{publicBalance} ETH</p>
+          <p className="font-mono text-2xl text-ns-text-bright mt-1">{publicBalance} {symbol}</p>
         </div>
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
           <p className="font-mono text-xs text-ns-text-dim">Privacy Score</p>
@@ -207,7 +211,7 @@ function PortfolioTab({
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
           <p className="font-mono text-xs text-ns-text-dim">Total Balance</p>
           <p className="font-mono text-xl text-ns-text-bright mt-1">
-            {(parseFloat(shieldedBalance) + parseFloat(publicBalance)).toFixed(4)} ETH
+            {(parseFloat(shieldedBalance) + parseFloat(publicBalance)).toFixed(4)} {symbol}
           </p>
         </div>
       </div>
@@ -216,7 +220,7 @@ function PortfolioTab({
 }
 
 // ---- Notes Tab ----
-function NotesTab({ notes }: { notes: OwnedNote[] }) {
+function NotesTab({ notes, symbol }: { notes: OwnedNote[]; symbol: string }) {
   const unspent = notes.filter((n) => !n.spent);
   const spent = notes.filter((n) => n.spent);
 
@@ -259,7 +263,7 @@ total 0
                 </div>
                 <div className="flex justify-between mt-1">
                   <span className="text-ns-text-dim">amount:</span>
-                  <span className="text-ns-primary">{formatAmount(note.amount)} ETH</span>
+                  <span className="text-ns-primary">{formatAmount(note.amount)} {symbol}</span>
                 </div>
                 <div className="flex justify-between mt-1">
                   <span className="text-ns-text-dim">leaf:</span>
@@ -337,7 +341,8 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
 
 // ---- DeFi Tab ----
 function DeFiTab() {
-  const [fromToken, setFromToken] = useState('ETH');
+  const { nativeSymbol } = useWalletStore();
+  const [fromToken, setFromToken] = useState(nativeSymbol);
   const [toToken, setToToken] = useState('USDC');
   const [amount, setAmount] = useState('');
 
@@ -367,9 +372,9 @@ function DeFiTab() {
                 onChange={(e) => setFromToken(e.target.value)}
                 className="bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright focus:border-ns-primary focus:outline-none"
               >
-                <option>ETH</option>
+                <option>{nativeSymbol}</option>
                 <option>USDC</option>
-                <option>WETH</option>
+                <option>W{nativeSymbol}</option>
               </select>
             </div>
           </div>
@@ -396,8 +401,8 @@ function DeFiTab() {
                 className="bg-ns-bg-primary border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright focus:border-ns-primary focus:outline-none"
               >
                 <option>USDC</option>
-                <option>ETH</option>
-                <option>WETH</option>
+                <option>{nativeSymbol}</option>
+                <option>W{nativeSymbol}</option>
               </select>
             </div>
           </div>

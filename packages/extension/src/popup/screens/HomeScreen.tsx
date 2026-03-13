@@ -10,6 +10,7 @@ export function HomeScreen() {
     shieldedBalance,
     publicBalance,
     networkName,
+    nativeSymbol,
     address,
     provingCircuit,
     provingProgress,
@@ -30,7 +31,7 @@ export function HomeScreen() {
     sendToBackground('GET_NETWORK', undefined, 'popup')
       .then((net) => {
         if (net?.chainId && net?.name) {
-          setChain(net.chainId as ChainId, net.name as string);
+          setChain(net.chainId as ChainId, net.name as string, net.nativeCurrency?.symbol);
         }
       })
       .catch(console.error);
@@ -103,14 +104,14 @@ export function HomeScreen() {
           className="font-mono text-3xl text-ns-text-bright mt-1 cursor-pointer"
           onClick={() => setShowShielded(!showShielded)}
         >
-          {showShielded ? `${shieldedBalance} ETH` : '\u2588\u2588\u2588\u2588\u2588\u2588 ETH'}
+          {showShielded ? `${shieldedBalance} ${nativeSymbol}` : `\u2588\u2588\u2588\u2588\u2588\u2588 ${nativeSymbol}`}
         </div>
         <p className="font-mono text-xs text-ns-text-dim mt-1">
           {showShielded ? '' : '(click to reveal)'}
         </p>
 
         <p className="font-mono text-xs text-ns-text-dim mt-3">// public balance</p>
-        <p className="font-mono text-lg text-ns-text">{publicBalance} ETH</p>
+        <p className="font-mono text-lg text-ns-text">{publicBalance} {nativeSymbol}</p>
 
         {/* Privacy Score */}
         <div className="mt-3">
@@ -263,7 +264,7 @@ function ShieldModal({ onClose }: { onClose: () => void }) {
         type="text"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount (ETH)"
+        placeholder="Amount"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
         autoFocus
       />
@@ -320,7 +321,7 @@ function SendModal({ onClose }: { onClose: () => void }) {
         type="text"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount (ETH)"
+        placeholder="Amount"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
       />
       {status && (
@@ -376,7 +377,7 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
         type="text"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount (ETH)"
+        placeholder="Amount"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
       />
       {status && (

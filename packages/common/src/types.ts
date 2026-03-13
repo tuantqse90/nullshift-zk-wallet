@@ -131,6 +131,7 @@ export interface NetworkConfig {
   chainId: ChainId;
   name: string;
   rpcUrl: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
   contracts: {
     shieldedPool: Address;
     relayer: Address;

@@ -28,6 +28,7 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     chainId: 1,
     name: 'Ethereum Mainnet',
     rpcUrl: '', // User must configure
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     contracts: {
       shieldedPool: '0x0000000000000000000000000000000000000000',
       relayer: '0x0000000000000000000000000000000000000000',
@@ -38,6 +39,7 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     chainId: 11155111,
     name: 'Ethereum Sepolia',
     rpcUrl: '', // User must configure
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
     contracts: {
       shieldedPool: '0x0000000000000000000000000000000000000000',
       relayer: '0x0000000000000000000000000000000000000000',
@@ -48,6 +50,7 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     chainId: 143,
     name: 'Monad',
     rpcUrl: 'https://rpc.monad.xyz',
+    nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
     contracts: {
       shieldedPool: '0x6ee40Ff88Ae38F80cE3049CA17b4E931f396d76e',
       relayer: '0x665145fBc58de6e101c185280A28b0e6aDD3E422',
@@ -58,6 +61,7 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     chainId: 31337,
     name: 'Anvil Local',
     rpcUrl: 'http://127.0.0.1:8545',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     contracts: {
       shieldedPool: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
       relayer: '0x0165878A594ca255338adfa4d48449f69242Eb8F',

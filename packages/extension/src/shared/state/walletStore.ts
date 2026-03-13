@@ -21,6 +21,7 @@ interface WalletState {
   // Network
   chainId: ChainId;
   networkName: string;
+  nativeSymbol: string;
 
   // Notes
   notes: OwnedNote[];
@@ -36,7 +37,7 @@ interface WalletState {
   setLocked: (locked: boolean) => void;
   setAddress: (address: Address | null) => void;
   setBalances: (shielded: string, publicBal: string) => void;
-  setChain: (chainId: ChainId, name: string) => void;
+  setChain: (chainId: ChainId, name: string, symbol?: string) => void;
   setNotes: (notes: OwnedNote[]) => void;
   addActivity: (entry: ActivityEntry) => void;
   setProvingStatus: (circuit: string | null, progress: number) => void;
@@ -51,6 +52,7 @@ export const useWalletStore = create<WalletState>((set) => ({
   publicBalance: '0',
   chainId: 143, // Default: Monad
   networkName: 'Monad',
+  nativeSymbol: 'MON',
   notes: [],
   activity: [],
   provingCircuit: null,
@@ -61,7 +63,7 @@ export const useWalletStore = create<WalletState>((set) => ({
   setAddress: (address) => set({ address, hasWallet: !!address }),
   setBalances: (shielded, publicBal) =>
     set({ shieldedBalance: shielded, publicBalance: publicBal }),
-  setChain: (chainId, name) => set({ chainId, networkName: name }),
+  setChain: (chainId, name, symbol) => set({ chainId, networkName: name, nativeSymbol: symbol ?? (chainId === 143 ? 'MON' : 'ETH') }),
   setNotes: (notes) => set({ notes }),
   addActivity: (entry) =>
     set((state) => ({
