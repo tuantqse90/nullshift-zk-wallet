@@ -168,18 +168,106 @@ async function handleMessage(
     // ---- Transactions ----
     case 'SEND_SHIELDED': {
       if (!keyManager.isUnlocked()) throw new Error('Wallet is locked');
+      const sendPayload = message.payload as { recipientPubkey: string; amount: bigint; token: string };
+      const sendAmount = BigInt(sendPayload.amount);
 
-      // Forward proof generation to offscreen document
+      await initBarretenberg();
+      const sKeys = keyManager.getKeys();
+
+      // Select input notes (max 2)
+      const unspent = notes.filter((n) => !n.spent && n.amount > 0n);
+      if (unspent.length === 0) throw new Error('No unspent notes');
+
+      // Find note(s) covering the amount
+      let inputNotes: OwnedNote[];
+      const singleNote = unspent.find((n) => n.amount >= sendAmount);
+      if (singleNote) {
+        inputNotes = [singleNote];
+      } else {
+        // Try to combine 2 notes
+        let found = false;
+        inputNotes = [];
+        for (let i = 0; i < unspent.length && !found; i++) {
+          for (let j = i + 1; j < unspent.length && !found; j++) {
+            if (unspent[i]!.amount + unspent[j]!.amount >= sendAmount) {
+              inputNotes = [unspent[i]!, unspent[j]!];
+              found = true;
+            }
+          }
+        }
+        if (!found) throw new Error('Insufficient shielded balance');
+      }
+
+      const totalInput = inputNotes.reduce((s, n) => s + n.amount, 0n);
+      const change = totalInput - sendAmount;
+
+      // Create output commitment for recipient
+      const { derivePublicKey: derivePubS } = await import('@nullshift/sdk');
+      const recipientCommitmentSalt = randomFieldElement();
+      const recipientCommitment = await computeCommitment(
+        sendPayload.recipientPubkey as Bytes32, sendAmount, recipientCommitmentSalt,
+      );
+
+      // Create change commitment for sender
+      const senderPubkey = await derivePubS(sKeys.spendingKey);
+      let changeCommitmentSend: Bytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Bytes32;
+      if (change > 0n) {
+        const changeSaltSend = randomFieldElement();
+        changeCommitmentSend = await computeCommitment(senderPubkey, change, changeSaltSend) as Bytes32;
+      }
+
+      // Get Merkle root
+      const sPool = await getPoolContract();
+      const sRoot = await sPool.getMerkleRoot() as string;
+
+      // Prepare nullifiers
+      const nullifier1 = inputNotes[0]!.nullifier;
+      const nullifier2 = inputNotes.length > 1
+        ? inputNotes[1]!.nullifier
+        : '0x0000000000000000000000000000000000000000000000000000000000000000' as Bytes32;
+
+      // Generate ZK proof via offscreen
       await ensureOffscreen();
-      const proofResult = await chrome.runtime.sendMessage({
+      const sendProofResult = await chrome.runtime.sendMessage({
         type: 'GENERATE_PROOF',
         payload: {
           circuit: 'shielded_transfer',
-          inputs: message.payload,
+          inputs: {
+            root: sRoot,
+            nullifier1,
+            nullifier2,
+            newCommitment1: recipientCommitment,
+            newCommitment2: changeCommitmentSend,
+            secretKey: sKeys.spendingKey,
+            inputNotes: inputNotes.map((n) => ({
+              salt: n.salt,
+              amount: n.amount.toString(),
+              merklePath: n.merklePath,
+            })),
+          },
         },
       });
 
-      return { txHash: '', proof: proofResult };
+      if (sendProofResult?.error) throw new Error(sendProofResult.error);
+
+      // Submit transact transaction
+      const sSigner = await getSigner();
+      const sPoolSigned = await getPoolContract(sSigner);
+      const sTx = await sPoolSigned.transact(
+        sendProofResult.proof,
+        [nullifier1, nullifier2],
+        [recipientCommitment, changeCommitmentSend],
+        sRoot,
+      );
+      const sReceipt = await sTx.wait();
+
+      // Mark input notes as spent
+      for (const n of inputNotes) {
+        n.spent = true;
+      }
+      await saveNotes();
+
+      return { txHash: sReceipt.hash, nullifiers: [nullifier1, nullifier2] };
     }
 
     case 'SHIELD_FUNDS': {

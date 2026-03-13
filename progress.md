@@ -33,6 +33,8 @@
 | 2026-03-13 | Regenerated TransferVerifier | Done | TransferVerifier.sol, shielded_transfer VK | New VK after nullifier uniqueness circuit change, all 20 Foundry tests pass |
 | 2026-03-13 | Phase 8: Sepolia deploy infra | Done | Deploy.s.sol, deploy.sh, verify.sh, update-addresses.sh | Auto-save JSON, balance check, contract verification, address patching |
 | 2026-03-13 | Multi-network extension support | Done | dashboard/App.tsx, HomeScreen.tsx, background/index.ts, messages.ts | Network selector, network-aware provider, SWITCH_NETWORK with name |
+| 2026-03-13 | Real transaction flows | Done | background/index.ts, webpack.config.js, abi.ts | Deposit: commitment + on-chain tx + note storage; Withdraw: UTXO select + ZK proof + tx; Transfer: 2-input UTXO + proof + transact; Tree sync from events |
+| 2026-03-13 | Circuit artifacts bundled | Done | webpack.config.js | 4 Noir circuit JSONs copied to dist/circuits/ for offscreen proof gen |
 
 ### Decision Log
 
