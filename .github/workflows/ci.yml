@@ -31,6 +31,9 @@ jobs:
       - name: Lint (TypeScript)
         run: pnpm lint
 
+      - name: Lint (ESLint)
+        run: pnpm lint:eslint
+
       - name: Build all packages
         run: pnpm build
 
