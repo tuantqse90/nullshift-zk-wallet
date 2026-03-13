@@ -1,0 +1,16 @@
+{
+  "network": "monad",
+  "chainId": 143,
+  "rpcUrl": "https://rpc.monad.xyz",
+  "blockExplorer": "https://monadscan.com",
+  "contracts": {
+    "depositVerifier": "0xC90822f540774c232e0B42A2115004d31f88D06e",
+    "transferVerifier": "0x3199b8363CF2d7A2755dA48187E2baf2BDa3aa69",
+    "withdrawVerifier": "0xd1BC55D9dbb4C8b684d6DE96D2e838d66A8c2b64",
+    "swapVerifier": "0x8ce8BC2E39482313ed4c160097F1ae6264944310",
+    "shieldedPool": "0x6ee40Ff88Ae38F80cE3049CA17b4E931f396d76e",
+    "relayer": "0x665145fBc58de6e101c185280A28b0e6aDD3E422"
+  },
+  "deployer": "0xE689520cC03166D148d892cc33b692b2Aa6F8Fbc",
+  "timestamp": "2026-03-13T03:15:29Z"
+}

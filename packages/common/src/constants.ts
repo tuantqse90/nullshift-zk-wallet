@@ -49,8 +49,8 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     name: 'Monad',
     rpcUrl: 'https://rpc.monad.xyz',
     contracts: {
-      shieldedPool: '0x0000000000000000000000000000000000000000',
-      relayer: '0x0000000000000000000000000000000000000000',
+      shieldedPool: '0x6ee40Ff88Ae38F80cE3049CA17b4E931f396d76e',
+      relayer: '0x665145fBc58de6e101c185280A28b0e6aDD3E422',
     },
     blockExplorer: 'https://monadscan.com',
   },
