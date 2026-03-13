@@ -38,6 +38,7 @@
 | 2026-03-13 | Activity logging | Done | background/index.ts | Shield/Send/Withdraw/Proof events logged, GET_ACTIVITY returns real data |
 | 2026-03-13 | GitHub repo created | Done | All files | https://github.com/tuantqse90/nullshift-zk-wallet — 6 commits pushed |
 | 2026-03-13 | Monad mainnet migration | Done | types.ts, constants.ts, Deploy.s.sol, deploy-monad.sh, background, walletStore, dashboard, README | ChainId 143, rpc.monad.xyz, monadscan.com, default network = Monad |
+| 2026-03-13 | Monad mainnet deployment | Done | constants.ts, deployments/monad.json | 6 contracts live on Monad, ~2.09 MON gas, 6/6 verified on-chain |
 
 ### Decision Log
 
@@ -117,18 +118,23 @@ _None currently_
 - Auto-lock timer is in-memory (service worker may be unloaded by Chrome before timeout)
 - No rate limiting on vault unlock attempts
 
-### Phase 8: Testnet Deploy (In Progress)
-- [x] Deploy script upgraded: auto-saves deployments/sepolia.json, balance check, address output
+### Phase 8: Mainnet Deploy (Complete)
+- [x] Deploy script upgraded: auto-saves deployments JSON, balance check, address output
 - [x] Verification script: `./deploy/verify.sh` checks on-chain code + calls view functions
 - [x] Address updater: `./scripts/update-addresses.sh` patches constants.ts from deployment JSON
 - [x] Multi-network support: dashboard network selector, popup network fetch, background network-aware provider
 - [x] SWITCH_NETWORK payload updated with `name` field
-- [x] Root npm scripts: deploy:sepolia, deploy:dry-run, verify:sepolia, update-addresses
-- [ ] Fund deployer wallet on Sepolia
-- [ ] Deploy contracts: `pnpm deploy:sepolia`
-- [ ] Verify contracts: `pnpm verify:sepolia`
-- [ ] Update addresses: `pnpm update-addresses packages/contracts/deployments/sepolia.json`
-- [ ] Test extension with live Sepolia contracts
+- [x] Root npm scripts: deploy:monad, deploy:sepolia, verify:monad, verify:sepolia, update-addresses
+- [x] Monad mainnet deployment (chainId 143) — 6 contracts deployed
+  - ShieldedPool: `0x6ee40Ff88Ae38F80cE3049CA17b4E931f396d76e`
+  - Relayer: `0x665145fBc58de6e101c185280A28b0e6aDD3E422`
+  - DepositVerifier: `0xC90822f540774c232e0B42A2115004d31f88D06e`
+  - TransferVerifier: `0x3199b8363CF2d7A2755dA48187E2baf2BDa3aa69`
+  - WithdrawVerifier: `0xd1BC55D9dbb4C8b684d6DE96D2e838d66A8c2b64`
+  - SwapVerifier: `0x8ce8BC2E39482313ed4c160097F1ae6264944310`
+- [x] All 6 contracts verified on-chain (6/6 passed)
+- [x] Extension addresses patched in constants.ts
+- [x] Extension rebuilt with live Monad addresses
 
 ### Quick Start (Local Development)
 ```bash
