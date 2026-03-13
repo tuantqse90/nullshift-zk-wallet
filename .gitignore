@@ -48,3 +48,10 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# Deployment keys/secrets
+*.pem
+*.key
+
+# Claude Code
+.claude/

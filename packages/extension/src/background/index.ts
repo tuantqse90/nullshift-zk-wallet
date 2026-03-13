@@ -5,7 +5,7 @@
 // Uses SDK KeyManager for real BIP-39/BIP-44 key derivation.
 // ============================================================
 
-import type { Message, MessageType } from '@nullshift/common';
+import type { Message, MessageType, ActivityEntry } from '@nullshift/common';
 import type { EncryptedVault, OwnedNote, Bytes32, Address } from '@nullshift/common';
 import { AUTO_LOCK_TIMEOUT_MS, NETWORKS, ETH_ADDRESS } from '@nullshift/common';
 import { KeyManager, SHIELDED_POOL_ABI, computeCommitment, computeNullifier, randomFieldElement, initBarretenberg } from '@nullshift/sdk';
@@ -15,6 +15,7 @@ import { ethers } from 'ethers';
 let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
 const keyManager = new KeyManager();
 const notes: OwnedNote[] = [];
+const activityLog: ActivityEntry[] = [];
 let notesEncryptionKey: CryptoKey | null = null;
 
 // ---- Storage Keys ----
@@ -267,6 +268,8 @@ async function handleMessage(
       }
       await saveNotes();
 
+      addActivity('SEND', `Sent ${ethers.formatEther(sendAmount)} ETH (shielded)`, sReceipt.hash);
+
       return { txHash: sReceipt.hash, nullifiers: [nullifier1, nullifier2] };
     }
 
@@ -324,6 +327,8 @@ async function handleMessage(
       };
       notes.push(newNote);
       await saveNotes();
+
+      addActivity('SHIELD', `Shielded ${ethers.formatEther(depositAmount)} ETH`, receipt.hash);
 
       return {
         txHash: receipt.hash,
@@ -414,6 +419,8 @@ async function handleMessage(
       spendNote.spent = true;
       await saveNotes();
 
+      addActivity('WITHDRAW', `Withdrew ${ethers.formatEther(withdrawAmount)} ETH`, wReceipt.hash);
+
       return { txHash: wReceipt.hash, nullifier: spendNote.nullifier };
     }
 
@@ -434,6 +441,8 @@ async function handleMessage(
 
     case 'PROOF_COMPLETE': {
       broadcastToUI(message);
+      const proofPayload = message.payload as { circuit?: string; provingTimeMs?: number };
+      addActivity('PROOF', `ZK proof generated: ${proofPayload.circuit ?? 'unknown'} (${((proofPayload.provingTimeMs ?? 0) / 1000).toFixed(1)}s)`);
       return {};
     }
 
@@ -519,12 +528,35 @@ async function handleMessage(
       return { success: true };
 
     // ---- Activity ----
-    case 'GET_ACTIVITY':
-      return { entries: [] };
+    case 'GET_ACTIVITY': {
+      const limit = (message.payload as { limit?: number })?.limit ?? 100;
+      return { entries: activityLog.slice(0, limit) };
+    }
 
     default:
       throw new Error(`Unknown message type: ${message.type}`);
   }
+}
+
+// ---- Activity Helpers ----
+
+function addActivity(
+  type: ActivityEntry['type'],
+  message: string,
+  txHash?: string,
+  details?: Record<string, unknown>,
+) {
+  const entry: ActivityEntry = {
+    id: crypto.randomUUID(),
+    type,
+    message,
+    timestamp: Date.now(),
+    txHash: txHash as `0x${string}` | undefined,
+    details,
+  };
+  activityLog.unshift(entry);
+  if (activityLog.length > 500) activityLog.length = 500;
+  broadcastToUI({ type: 'NEW_ACTIVITY', payload: entry });
 }
 
 // ---- Contract Helpers ----
