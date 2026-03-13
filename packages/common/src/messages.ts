@@ -121,7 +121,7 @@ export interface PayloadMap {
 
   // Network
   GET_NETWORK: undefined;
-  SWITCH_NETWORK: { chainId: ChainId };
+  SWITCH_NETWORK: { chainId: ChainId; name: string };
 
   // Settings
   GET_SETTINGS: undefined;

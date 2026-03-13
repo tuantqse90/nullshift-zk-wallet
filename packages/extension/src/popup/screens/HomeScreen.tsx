@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '../../shared/state/walletStore';
 import { sendToBackground } from '../../shared/utils/messaging';
+import type { ChainId } from '@nullshift/common';
 
 type Modal = 'shield' | 'send' | 'unshield' | null;
 
@@ -14,6 +15,7 @@ export function HomeScreen() {
     provingProgress,
     setBalances,
     setLocked,
+    setChain,
   } = useWalletStore();
 
   const [showShielded, setShowShielded] = useState(false);
@@ -22,6 +24,14 @@ export function HomeScreen() {
   useEffect(() => {
     sendToBackground('GET_BALANCE', { token: undefined }, 'popup')
       .then((result) => setBalances(result.shielded, result.public))
+      .catch(console.error);
+
+    sendToBackground('GET_NETWORK', undefined, 'popup')
+      .then((net) => {
+        if (net?.chainId && net?.name) {
+          setChain(net.chainId as ChainId, net.name as string);
+        }
+      })
       .catch(console.error);
   }, []);
 

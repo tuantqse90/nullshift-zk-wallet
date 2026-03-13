@@ -14,7 +14,11 @@
     "test:circuits": "cd packages/circuits && for d in */; do (cd \"$d\" && nargo test); done",
     "test:contracts": "cd packages/contracts && forge test",
     "test:sdk": "cd packages/sdk && pnpm vitest run",
-    "test:all": "pnpm test:circuits && pnpm test:contracts && pnpm test:sdk"
+    "test:all": "pnpm test:circuits && pnpm test:contracts && pnpm test:sdk",
+    "deploy:sepolia": "cd packages/contracts && ./deploy/deploy.sh --broadcast",
+    "deploy:dry-run": "cd packages/contracts && ./deploy/deploy.sh",
+    "verify:sepolia": "cd packages/contracts && ./deploy/verify.sh",
+    "update-addresses": "./scripts/update-addresses.sh"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

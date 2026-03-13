@@ -245,7 +245,13 @@ async function handleMessage(
     // ---- Network ----
     case 'GET_NETWORK': {
       const netStored = await chrome.storage.local.get(NETWORK_KEY);
-      return netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+      const net = netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+      const config = NETWORKS[net.chainId as keyof typeof NETWORKS];
+      return {
+        ...net,
+        contracts: config?.contracts,
+        blockExplorer: config?.blockExplorer,
+      };
     }
 
     case 'SWITCH_NETWORK': {

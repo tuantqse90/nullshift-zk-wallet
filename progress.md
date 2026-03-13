@@ -31,6 +31,8 @@
 | 2026-03-13 | Privacy leak fixes | Done | ShieldedPool.sol, background/index.ts, inpage/index.ts, abi.ts | Removed amounts from events, encrypted note storage, generic dApp errors, postMessage origin lock |
 | 2026-03-13 | Local network + scripts | Done | common/constants.ts, common/types.ts, package.json | Added chainId 31337 (Anvil) with contract addresses, npm scripts: dev:local, demo, test:all |
 | 2026-03-13 | Regenerated TransferVerifier | Done | TransferVerifier.sol, shielded_transfer VK | New VK after nullifier uniqueness circuit change, all 20 Foundry tests pass |
+| 2026-03-13 | Phase 8: Sepolia deploy infra | Done | Deploy.s.sol, deploy.sh, verify.sh, update-addresses.sh | Auto-save JSON, balance check, contract verification, address patching |
+| 2026-03-13 | Multi-network extension support | Done | dashboard/App.tsx, HomeScreen.tsx, background/index.ts, messages.ts | Network selector, network-aware provider, SWITCH_NETWORK with name |
 
 ### Decision Log
 
@@ -110,10 +112,17 @@ _None currently_
 - Auto-lock timer is in-memory (service worker may be unloaded by Chrome before timeout)
 - No rate limiting on vault unlock attempts
 
-### Upcoming — Phase 8: Testnet Deploy
+### Phase 8: Testnet Deploy (In Progress)
+- [x] Deploy script upgraded: auto-saves deployments/sepolia.json, balance check, address output
+- [x] Verification script: `./deploy/verify.sh` checks on-chain code + calls view functions
+- [x] Address updater: `./scripts/update-addresses.sh` patches constants.ts from deployment JSON
+- [x] Multi-network support: dashboard network selector, popup network fetch, background network-aware provider
+- [x] SWITCH_NETWORK payload updated with `name` field
+- [x] Root npm scripts: deploy:sepolia, deploy:dry-run, verify:sepolia, update-addresses
 - [ ] Fund deployer wallet on Sepolia
-- [ ] Deploy contracts: `./deploy/deploy.sh --broadcast`
-- [ ] Verify contracts on Etherscan
+- [ ] Deploy contracts: `pnpm deploy:sepolia`
+- [ ] Verify contracts: `pnpm verify:sepolia`
+- [ ] Update addresses: `pnpm update-addresses packages/contracts/deployments/sepolia.json`
 - [ ] Test extension with live Sepolia contracts
 
 ### Quick Start (Local Development)
@@ -128,5 +137,26 @@ pnpm demo
 pnpm test:all
 
 # Build extension (load dist/ as unpacked in chrome://extensions)
+pnpm build
+```
+
+### Quick Start (Sepolia Deployment)
+```bash
+# 1. Configure .env
+cd packages/contracts
+cp .env.example .env
+# Edit .env: set DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY (optional)
+
+# 2. Dry run (simulation)
+pnpm deploy:dry-run
+
+# 3. Real deployment
+pnpm deploy:sepolia
+
+# 4. Verify on-chain
+pnpm verify:sepolia
+
+# 5. Update extension addresses
+pnpm update-addresses packages/contracts/deployments/sepolia.json
 pnpm build
 ```

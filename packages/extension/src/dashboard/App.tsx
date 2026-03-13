@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '../shared/state/walletStore';
 import { sendToBackground, onMessage } from '../shared/utils/messaging';
-import type { ActivityEntry, OwnedNote } from '@nullshift/common';
+import type { ActivityEntry, ChainId, OwnedNote } from '@nullshift/common';
 
 type Tab = 'portfolio' | 'notes' | 'activity' | 'settings';
 
@@ -19,6 +19,7 @@ export function DashboardApp() {
     setLocked,
     setAddress,
     setBalances,
+    setChain,
     setNotes,
     addActivity,
     setProvingStatus,
@@ -36,6 +37,15 @@ export function DashboardApp() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    // Fetch current network
+    sendToBackground('GET_NETWORK', undefined, 'dashboard')
+      .then((net) => {
+        if (net?.chainId && net?.name) {
+          setChain(net.chainId as ChainId, net.name as string);
+        }
+      })
+      .catch(console.error);
 
     // Fetch balances
     sendToBackground('GET_BALANCE', { token: undefined }, 'dashboard')
@@ -325,6 +335,14 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
 }
 
 // ---- Settings Tab ----
+
+const AVAILABLE_NETWORKS = [
+  { chainId: 11155111 as ChainId, name: 'Ethereum Sepolia' },
+  { chainId: 31337 as ChainId, name: 'Anvil Local' },
+  { chainId: 1 as ChainId, name: 'Ethereum Mainnet' },
+  { chainId: 10143 as ChainId, name: 'Monad Testnet' },
+];
+
 function SettingsTab({
   networkName,
   address,
@@ -332,8 +350,24 @@ function SettingsTab({
   networkName: string;
   address: string | null;
 }) {
+  const { setChain } = useWalletStore();
+  const [switching, setSwitching] = useState(false);
+
   const handleLock = () => {
     sendToBackground('LOCK_WALLET', undefined, 'dashboard').catch(console.error);
+  };
+
+  const handleNetworkSwitch = async (chainId: ChainId, name: string) => {
+    if (name === networkName) return;
+    setSwitching(true);
+    try {
+      await sendToBackground('SWITCH_NETWORK', { chainId, name }, 'dashboard');
+      setChain(chainId, name);
+    } catch (err) {
+      console.error('Network switch failed:', err);
+    } finally {
+      setSwitching(false);
+    }
   };
 
   return (
@@ -342,8 +376,24 @@ function SettingsTab({
 
       <div className="space-y-4">
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">
-          <p className="font-mono text-xs text-ns-text-dim mb-2">Network</p>
-          <p className="font-mono text-sm text-ns-secondary">{networkName}</p>
+          <p className="font-mono text-xs text-ns-text-dim mb-3">Network</p>
+          <div className="space-y-2">
+            {AVAILABLE_NETWORKS.map((net) => (
+              <button
+                key={net.chainId}
+                onClick={() => handleNetworkSwitch(net.chainId, net.name)}
+                disabled={switching}
+                className={`w-full text-left font-mono text-sm px-3 py-2 rounded border transition-colors ${
+                  net.name === networkName
+                    ? 'border-ns-primary text-ns-primary bg-ns-bg-primary'
+                    : 'border-ns-border text-ns-text-dim hover:border-ns-text-dim hover:text-ns-text-DEFAULT'
+                }`}
+              >
+                {net.name === networkName ? '> ' : '  '}{net.name}
+                <span className="text-ns-text-dim ml-2">({net.chainId})</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="bg-ns-bg-card border border-ns-border rounded-lg p-4">

@@ -14,7 +14,7 @@ import {SwapVerifier} from "../src/verifiers/SwapVerifier.sol";
 contract Deploy is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address uniswapRouter = vm.envAddress("UNISWAP_ROUTER_ADDRESS");
+        address uniswapRouter = vm.envOr("UNISWAP_ROUTER_ADDRESS", address(0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E));
 
         vm.startBroadcast(deployerKey);
 
@@ -24,18 +24,12 @@ contract Deploy is Script {
         WithdrawVerifier withdrawVerifier = new WithdrawVerifier();
         SwapVerifier swapVerifier = new SwapVerifier();
 
-        console.log("DepositVerifier:", address(depositVerifier));
-        console.log("TransferVerifier:", address(transferVerifier));
-        console.log("WithdrawVerifier:", address(withdrawVerifier));
-        console.log("SwapVerifier:", address(swapVerifier));
-
         // 2. Deploy ShieldedPool
         ShieldedPool pool = new ShieldedPool(
             address(transferVerifier),
             address(depositVerifier),
             address(withdrawVerifier)
         );
-        console.log("ShieldedPool:", address(pool));
 
         // 3. Deploy Relayer
         Relayer relayer = new Relayer(
@@ -43,8 +37,17 @@ contract Deploy is Script {
             address(swapVerifier),
             uniswapRouter
         );
-        console.log("Relayer:", address(relayer));
 
         vm.stopBroadcast();
+
+        // Output parseable addresses
+        console.log("--- DEPLOYMENT ADDRESSES ---");
+        console.log("DEPOSIT_VERIFIER=%s", address(depositVerifier));
+        console.log("TRANSFER_VERIFIER=%s", address(transferVerifier));
+        console.log("WITHDRAW_VERIFIER=%s", address(withdrawVerifier));
+        console.log("SWAP_VERIFIER=%s", address(swapVerifier));
+        console.log("SHIELDED_POOL=%s", address(pool));
+        console.log("RELAYER=%s", address(relayer));
+        console.log("----------------------------");
     }
 }
