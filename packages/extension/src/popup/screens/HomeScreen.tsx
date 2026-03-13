@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '../../shared/state/walletStore';
 import { sendToBackground } from '../../shared/utils/messaging';
-import type { ChainId } from '@nullshift/common';
+import type { ChainId, ActivityEntry } from '@nullshift/common';
 
-type Modal = 'shield' | 'send' | 'unshield' | null;
+type Modal = 'shield' | 'send' | 'unshield' | 'receive' | null;
 
 export function HomeScreen() {
   const {
@@ -20,6 +20,7 @@ export function HomeScreen() {
 
   const [showShielded, setShowShielded] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
+  const [activities, setActivities] = useState<ActivityEntry[]>([]);
 
   useEffect(() => {
     sendToBackground('GET_BALANCE', { token: undefined }, 'popup')
@@ -33,6 +34,21 @@ export function HomeScreen() {
         }
       })
       .catch(console.error);
+
+    sendToBackground('GET_ACTIVITY', { limit: 5 }, 'popup')
+      .then((res) => setActivities(res.entries ?? []))
+      .catch(console.error);
+  }, []);
+
+  // Listen for new activity from background
+  useEffect(() => {
+    const handler = (msg: { type: string; payload: ActivityEntry }) => {
+      if (msg.type === 'NEW_ACTIVITY' && msg.payload) {
+        setActivities((prev) => [msg.payload, ...prev].slice(0, 5));
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
   const privacyScore = (() => {
@@ -114,7 +130,7 @@ export function HomeScreen() {
       {provingCircuit && (
         <div className="mx-4 mb-2 px-3 py-2 bg-ns-bg-card border border-ns-primary rounded">
           <p className="font-mono text-xs text-ns-primary">
-            Generating proof: {provingCircuit} ({provingProgress}%)
+            &gt; prove {provingCircuit} ({provingProgress}%)
           </p>
           <div className="w-full h-1 bg-ns-bg-primary rounded mt-1">
             <div
@@ -125,32 +141,71 @@ export function HomeScreen() {
         </div>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions — 5 buttons matching UI spec */}
       <div className="px-4 grid grid-cols-3 gap-2">
         <ActionButton label="> Shield" onClick={() => setModal('shield')} />
         <ActionButton label="> Send" onClick={() => setModal('send')} />
+        <ActionButton label="> Swap" onClick={() => {}} disabled />
+      </div>
+      <div className="px-4 grid grid-cols-3 gap-2 mt-2">
+        <ActionButton label="> Recv" onClick={() => setModal('receive')} />
         <ActionButton label="> Unshield" onClick={() => setModal('unshield')} />
       </div>
 
-      {/* Activity Feed */}
-      <div className="flex-1 px-4 py-4 overflow-y-auto">
+      {/* Activity Feed — real data */}
+      <div className="flex-1 px-4 py-3 overflow-y-auto">
         <p className="font-mono text-xs text-ns-text-dim mb-2">// recent activity</p>
-        <p className="font-mono text-xs text-ns-text-dim">No activity yet</p>
+        {activities.length === 0 ? (
+          <p className="font-mono text-xs text-ns-text-dim">No activity yet</p>
+        ) : (
+          activities.map((a) => (
+            <ActivityRow key={a.id} entry={a} />
+          ))
+        )}
       </div>
 
       {/* Modals */}
       {modal === 'shield' && <ShieldModal onClose={() => setModal(null)} />}
       {modal === 'send' && <SendModal onClose={() => setModal(null)} />}
       {modal === 'unshield' && <UnshieldModal onClose={() => setModal(null)} />}
+      {modal === 'receive' && <ReceiveModal address={address ?? ''} onClose={() => setModal(null)} />}
     </div>
   );
 }
 
-function ActionButton({ label, onClick }: { label: string; onClick: () => void }) {
+function ActionButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} className="btn btn-ghost text-xs py-2">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="btn btn-ghost text-xs py-2 disabled:opacity-30 disabled:cursor-not-allowed"
+    >
       {label}
     </button>
+  );
+}
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  SHIELD: 'text-ns-primary',
+  SEND: 'text-ns-secondary',
+  RECV: 'text-ns-secondary',
+  WITHDRAW: 'text-ns-accent',
+  SWAP: 'text-ns-zk',
+  PROOF: 'text-ns-text-dim',
+  DAPP: 'text-ns-text',
+  ERROR: 'text-red-400',
+};
+
+function ActivityRow({ entry }: { entry: ActivityEntry }) {
+  const time = new Date(entry.timestamp);
+  const ts = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+  const color = ACTIVITY_COLORS[entry.type] ?? 'text-ns-text-dim';
+  return (
+    <p className="font-mono text-xs leading-5 truncate">
+      <span className="text-ns-text-dim">[{ts}]</span>{' '}
+      <span className={color}>{entry.type.padEnd(8)}</span>{' '}
+      <span className="text-ns-text">{entry.message}</span>
+    </p>
   );
 }
 
@@ -334,6 +389,41 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
       >
         {loading ? '> Proving...' : '> Withdraw'}
       </button>
+    </ModalOverlay>
+  );
+}
+
+function ReceiveModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <ModalOverlay title="// receive" onClose={onClose}>
+      <p className="font-mono text-xs text-ns-text-dim mb-3">// your shielded address</p>
+
+      {/* Address display */}
+      <div className="bg-ns-bg-card border border-ns-border rounded p-4 mb-4">
+        <p className="font-mono text-sm text-ns-text-bright break-all leading-relaxed text-center">
+          {address || '---'}
+        </p>
+      </div>
+
+      <button
+        onClick={handleCopy}
+        className="btn btn-primary w-full mb-3"
+      >
+        {copied ? '> Copied!' : '> Copy Address'}
+      </button>
+
+      <p className="font-mono text-xs text-ns-text-dim text-center">
+        // share this address to receive shielded funds
+      </p>
     </ModalOverlay>
   );
 }
