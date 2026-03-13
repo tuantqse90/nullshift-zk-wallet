@@ -14,7 +14,8 @@ import {SwapVerifier} from "../src/verifiers/SwapVerifier.sol";
 contract Deploy is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address uniswapRouter = vm.envOr("UNISWAP_ROUTER_ADDRESS", address(0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E));
+        // Default to zero address (swap disabled) — override with UNISWAP_ROUTER_ADDRESS for chains with DEX
+        address uniswapRouter = vm.envOr("UNISWAP_ROUTER_ADDRESS", address(0));
 
         vm.startBroadcast(deployerKey);
 

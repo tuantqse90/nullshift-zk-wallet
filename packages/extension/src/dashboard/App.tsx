@@ -337,10 +337,10 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
 // ---- Settings Tab ----
 
 const AVAILABLE_NETWORKS = [
+  { chainId: 143 as ChainId, name: 'Monad' },
   { chainId: 11155111 as ChainId, name: 'Ethereum Sepolia' },
   { chainId: 31337 as ChainId, name: 'Anvil Local' },
   { chainId: 1 as ChainId, name: 'Ethereum Mainnet' },
-  { chainId: 10143 as ChainId, name: 'Monad Testnet' },
 ];
 
 function SettingsTab({

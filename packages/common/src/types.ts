@@ -12,7 +12,7 @@ export type Address = Hex;
 export type Bytes32 = Hex;
 
 /** Supported chain IDs */
-export type ChainId = 1 | 11155111 | 10143 | 31337; // mainnet, sepolia, monad testnet, anvil local
+export type ChainId = 1 | 11155111 | 143 | 31337; // eth mainnet, sepolia, monad mainnet, anvil local
 
 // ── Note Types ──────────────────────────────────────────
 

@@ -37,6 +37,7 @@
 | 2026-03-13 | Circuit artifacts bundled | Done | webpack.config.js | 4 Noir circuit JSONs copied to dist/circuits/ for offscreen proof gen |
 | 2026-03-13 | Activity logging | Done | background/index.ts | Shield/Send/Withdraw/Proof events logged, GET_ACTIVITY returns real data |
 | 2026-03-13 | GitHub repo created | Done | All files | https://github.com/tuantqse90/nullshift-zk-wallet — 6 commits pushed |
+| 2026-03-13 | Monad mainnet migration | Done | types.ts, constants.ts, Deploy.s.sol, deploy-monad.sh, background, walletStore, dashboard, README | ChainId 143, rpc.monad.xyz, monadscan.com, default network = Monad |
 
 ### Decision Log
 

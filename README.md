@@ -1,6 +1,6 @@
 # NullShift — ZK Privacy Wallet
 
-> Shielded transfers, private balances, anonymous DeFi — powered by Noir ZK proofs.
+> Shielded transfers, private balances, anonymous DeFi — powered by Noir ZK proofs on Monad.
 
 Chrome MV3 extension wallet using UTXO commitment model with Pedersen/Poseidon hashing.
 Client-side proof generation via Barretenberg WASM. No tracking, no analytics, dark mode only.
@@ -28,7 +28,7 @@ Client-side proof generation via Barretenberg WASM. No tracking, no analytics, d
 └─────────────────────────────────────────────────────┘
                      │
           ┌──────────▼──────────┐
-          │   EVM Chain          │
+          │   Monad (EVM)        │
           │  ┌────────────────┐  │
           │  │  ShieldedPool  │  │  Merkle tree, deposits,
           │  │                │  │  transfers, withdrawals
@@ -49,6 +49,7 @@ Client-side proof generation via Barretenberg WASM. No tracking, no analytics, d
 | ZK Circuits | Noir (Aztec) → ACIR → UltraPlonk |
 | Proof Engine | Barretenberg WASM (bb.js) |
 | Contracts | Solidity 0.8.24, Foundry |
+| Chain | Monad (chainId: 143) — 10k TPS EVM |
 | Extension | Chrome MV3, React 18, TypeScript, Zustand, Tailwind |
 | SDK | ethers.js v6, bb.js, vitest |
 | Build | Turborepo + pnpm workspaces, Webpack 5 |
@@ -89,6 +90,27 @@ pnpm run demo
 2. Open `chrome://extensions`
 3. Enable "Developer mode"
 4. Click "Load unpacked" → select `packages/extension/dist/`
+
+## Deploy to Monad
+
+```bash
+cd packages/contracts
+cp .env.example .env
+# Set DEPLOYER_PRIVATE_KEY (fund with MON first)
+
+# Dry run
+pnpm run deploy:monad:dry-run
+
+# Real deployment
+pnpm run deploy:monad
+
+# Verify contracts
+pnpm run verify:monad
+
+# Update extension addresses
+pnpm run update-addresses packages/contracts/deployments/monad.json
+pnpm build
+```
 
 ## Deploy to Sepolia
 
@@ -132,12 +154,12 @@ pnpm build
 
 ## Supported Networks
 
-| Network | Chain ID | Status |
-|---------|----------|--------|
-| Anvil Local | 31337 | Deployed |
-| Ethereum Sepolia | 11155111 | Ready to deploy |
-| Ethereum Mainnet | 1 | Planned |
-| Monad Testnet | 10143 | Planned |
+| Network | Chain ID | RPC | Status |
+|---------|----------|-----|--------|
+| Monad | 143 | rpc.monad.xyz | Default — ready to deploy |
+| Anvil Local | 31337 | localhost:8545 | Deployed |
+| Ethereum Sepolia | 11155111 | rpc.sepolia.org | Ready to deploy |
+| Ethereum Mainnet | 1 | — | Planned |
 
 ## License
 

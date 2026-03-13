@@ -44,7 +44,7 @@ let cachedRpcUrl: string | null = null;
 
 async function getProvider(): Promise<ethers.JsonRpcProvider> {
   const netStored = await chrome.storage.local.get(NETWORK_KEY);
-  const network = netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+  const network = netStored[NETWORK_KEY] ?? { chainId: 143, name: 'Monad' };
 
   // Check for custom contract addresses (local dev)
   const contractsStored = await chrome.storage.local.get(CONTRACTS_KEY);
@@ -501,7 +501,7 @@ async function handleMessage(
     // ---- Network ----
     case 'GET_NETWORK': {
       const netStored = await chrome.storage.local.get(NETWORK_KEY);
-      const net = netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+      const net = netStored[NETWORK_KEY] ?? { chainId: 143, name: 'Monad' };
       const config = NETWORKS[net.chainId as keyof typeof NETWORKS];
       return {
         ...net,
@@ -563,7 +563,7 @@ function addActivity(
 
 async function getNetworkConfig() {
   const netStored = await chrome.storage.local.get(NETWORK_KEY);
-  const net = netStored[NETWORK_KEY] ?? { chainId: 11155111, name: 'Ethereum Sepolia' };
+  const net = netStored[NETWORK_KEY] ?? { chainId: 143, name: 'Monad' };
   const config = NETWORKS[net.chainId as keyof typeof NETWORKS];
   return config;
 }

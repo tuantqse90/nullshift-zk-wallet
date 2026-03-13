@@ -44,14 +44,15 @@ export const NETWORKS: Record<ChainId, NetworkConfig> = {
     },
     blockExplorer: 'https://sepolia.etherscan.io',
   },
-  10143: {
-    chainId: 10143,
-    name: 'Monad Testnet',
-    rpcUrl: '', // User must configure
+  143: {
+    chainId: 143,
+    name: 'Monad',
+    rpcUrl: 'https://rpc.monad.xyz',
     contracts: {
       shieldedPool: '0x0000000000000000000000000000000000000000',
       relayer: '0x0000000000000000000000000000000000000000',
     },
+    blockExplorer: 'https://monadscan.com',
   },
   31337: {
     chainId: 31337,

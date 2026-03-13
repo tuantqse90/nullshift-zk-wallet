@@ -49,8 +49,8 @@ export const useWalletStore = create<WalletState>((set) => ({
   address: null,
   shieldedBalance: '0',
   publicBalance: '0',
-  chainId: 11155111, // Default: Sepolia
-  networkName: 'Ethereum Sepolia',
+  chainId: 143, // Default: Monad
+  networkName: 'Monad',
   notes: [],
   activity: [],
   provingCircuit: null,

@@ -15,8 +15,11 @@
     "test:contracts": "cd packages/contracts && forge test",
     "test:sdk": "cd packages/sdk && pnpm vitest run",
     "test:all": "pnpm test:circuits && pnpm test:contracts && pnpm test:sdk",
+    "deploy:monad": "cd packages/contracts && ./deploy/deploy-monad.sh --broadcast",
+    "deploy:monad:dry-run": "cd packages/contracts && ./deploy/deploy-monad.sh",
     "deploy:sepolia": "cd packages/contracts && ./deploy/deploy.sh --broadcast",
     "deploy:dry-run": "cd packages/contracts && ./deploy/deploy.sh",
+    "verify:monad": "cd packages/contracts && ./deploy/verify.sh deployments/monad.json",
     "verify:sepolia": "cd packages/contracts && ./deploy/verify.sh",
     "update-addresses": "./scripts/update-addresses.sh"
   },
