@@ -44,6 +44,10 @@
 | 2026-03-13 | Popup UI upgrade | Done | HomeScreen.tsx | Receive modal, 5 action buttons, real activity feed, live NEW_ACTIVITY listener |
 | 2026-03-13 | Dashboard upgrade | Done | dashboard/App.tsx | DeFi Hub tab (swap UI), Settings 2-col grid, privacy badges, seed section |
 | 2026-03-13 | ESLint setup | Done | eslint.config.mjs, package.json | ESLint 9 flat config, TS + React + hooks rules, 0 errors/11 warnings |
+| 2026-03-13 | dApp EIP-1193 handler | Done | background/index.ts | eth_requestAccounts, eth_accounts, eth_chainId, wallet_switchEthereumChain, etc. |
+| 2026-03-13 | Side panel privacy recs | Done | sidepanel/App.tsx | Context-aware recommendations (shield more, merge notes, anonymity growth) |
+| 2026-03-13 | Native currency display | Done | types.ts, constants.ts, walletStore, HomeScreen, dashboard | MON on Monad, ETH on Ethereum, dynamic across all UI |
+| 2026-03-13 | Auto-sync on UI open | Done | HomeScreen.tsx, dashboard/App.tsx | SYNC_TREE triggered on popup/dashboard open |
 
 ### Decision Log
 
