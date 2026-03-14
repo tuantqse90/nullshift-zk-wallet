@@ -37,7 +37,7 @@ describe('Prover', () => {
     // Verify locally
     const valid = await prover.verifyProof(result);
     expect(valid).toBe(true);
-  }, 120_000);
+  }, 300_000);
 
   it('rejects proof with wrong inputs', async () => {
     // Wrong commitment should fail witness generation

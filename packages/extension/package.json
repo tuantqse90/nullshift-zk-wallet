@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/check-circuits.js",
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
     "build:prod": "NODE_ENV=production webpack --mode production",

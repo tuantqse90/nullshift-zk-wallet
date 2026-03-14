@@ -100,10 +100,11 @@ module.exports = (env, argv) => {
           { from: 'manifest.json', to: 'manifest.json' },
           { from: 'src/assets', to: 'assets', noErrorOnMissing: true },
           // Circuit artifacts for ZK proof generation in offscreen document
-          { from: '../circuits/deposit/target/deposit.json', to: 'circuits/deposit.json', noErrorOnMissing: true },
-          { from: '../circuits/shielded_transfer/target/shielded_transfer.json', to: 'circuits/shielded_transfer.json', noErrorOnMissing: true },
-          { from: '../circuits/withdraw/target/withdraw.json', to: 'circuits/withdraw.json', noErrorOnMissing: true },
-          { from: '../circuits/anonymous_swap/target/anonymous_swap.json', to: 'circuits/anonymous_swap.json', noErrorOnMissing: true },
+          // Pre-validated by scripts/check-circuits.js (prebuild step)
+          { from: '../circuits/deposit/target/deposit.json', to: 'circuits/deposit.json' },
+          { from: '../circuits/shielded_transfer/target/shielded_transfer.json', to: 'circuits/shielded_transfer.json' },
+          { from: '../circuits/withdraw/target/withdraw.json', to: 'circuits/withdraw.json' },
+          { from: '../circuits/anonymous_swap/target/anonymous_swap.json', to: 'circuits/anonymous_swap.json' },
         ],
       }),
     ],

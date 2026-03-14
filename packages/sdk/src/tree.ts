@@ -7,7 +7,7 @@
 
 import type { Bytes32 } from '@nullshift/common';
 import { MERKLE_TREE_DEPTH } from '@nullshift/common';
-import { pedersenHash, getZeroHashes, bigintToField } from './crypto';
+import { poseidonHash2, getZeroHashes, bigintToField } from './crypto';
 import { ethers } from 'ethers';
 import { SHIELDED_POOL_ABI } from './abi';
 
@@ -141,7 +141,7 @@ export class MerkleTreeSync {
       for (let i = 0; i < currentLayer.length; i += 2) {
         const left = currentLayer[i]!;
         const right = currentLayer[i + 1] ?? this.zeroHashes![level]!;
-        nextLayer.push(await pedersenHash([left, right]));
+        nextLayer.push(await poseidonHash2(left, right));
       }
 
       if (nextLayer.length === 0) {

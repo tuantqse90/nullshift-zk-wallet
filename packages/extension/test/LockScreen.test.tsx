@@ -7,12 +7,14 @@ vi.mock('../src/shared/utils/messaging', () => ({
   sendToBackground: vi.fn().mockResolvedValue({ success: true, address: '0x1234' }),
 }));
 
-// Mock store
+// Mock store with configurable hasWallet
 const mockSetLocked = vi.fn();
 const mockSetAddress = vi.fn();
+let mockHasWallet = true;
+
 vi.mock('../src/shared/state/walletStore', () => ({
   useWalletStore: () => ({
-    hasWallet: true,
+    hasWallet: mockHasWallet,
     setLocked: mockSetLocked,
     setAddress: mockSetAddress,
   }),
@@ -21,6 +23,7 @@ vi.mock('../src/shared/state/walletStore', () => ({
 describe('LockScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasWallet = true;
   });
 
   it('renders the NullShift branding', () => {
@@ -58,5 +61,34 @@ describe('LockScreen', () => {
   it('renders terminal prompt', () => {
     render(<LockScreen />);
     expect(screen.getByText(/nullshift@labs\$/)).toBeInTheDocument();
+  });
+});
+
+describe('LockScreen (no wallet)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasWallet = false;
+  });
+
+  it('shows create wallet button when no wallet exists', () => {
+    render(<LockScreen />);
+    expect(screen.getByText(/Create wallet/i)).toBeInTheDocument();
+  });
+
+  it('shows import wallet link when no wallet exists', () => {
+    render(<LockScreen />);
+    expect(screen.getByText(/Import existing wallet/i)).toBeInTheDocument();
+  });
+
+  it('switches to import mode on click', () => {
+    render(<LockScreen />);
+    fireEvent.click(screen.getByText(/Import existing wallet/i));
+    expect(screen.getByPlaceholderText(/seed phrase/i)).toBeInTheDocument();
+  });
+
+  it('shows back button in import mode', () => {
+    render(<LockScreen />);
+    fireEvent.click(screen.getByText(/Import existing wallet/i));
+    expect(screen.getByText(/back/i)).toBeInTheDocument();
   });
 });

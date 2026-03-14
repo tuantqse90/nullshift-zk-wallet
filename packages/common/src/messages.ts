@@ -37,6 +37,7 @@ export type MessageSource =
 export type MessageType =
   // Wallet lifecycle
   | 'CREATE_WALLET'
+  | 'IMPORT_WALLET'
   | 'UNLOCK_WALLET'
   | 'LOCK_WALLET'
   | 'GET_WALLET_STATUS'
@@ -81,7 +82,8 @@ export type MessageType =
 
 export interface PayloadMap {
   // Wallet lifecycle
-  CREATE_WALLET: { mnemonic?: string; password: string };
+  CREATE_WALLET: { password: string };
+  IMPORT_WALLET: { mnemonic: string; password: string };
   UNLOCK_WALLET: { password: string };
   LOCK_WALLET: undefined;
   GET_WALLET_STATUS: undefined;
@@ -136,7 +138,8 @@ export interface PayloadMap {
 // ── Response Map ────────────────────────────────────────
 
 export interface ResponseMap {
-  CREATE_WALLET: { address: Address };
+  CREATE_WALLET: { address: Address; mnemonic: string };
+  IMPORT_WALLET: { address: Address };
   UNLOCK_WALLET: { success: boolean; address?: Address };
   LOCK_WALLET: { success: boolean };
   GET_WALLET_STATUS: { locked: boolean; hasWallet: boolean; address?: Address };

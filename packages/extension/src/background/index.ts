@@ -8,12 +8,13 @@
 import type { Message, MessageType, ActivityEntry } from '@nullshift/common';
 import type { EncryptedVault, OwnedNote, Bytes32, Address } from '@nullshift/common';
 import { AUTO_LOCK_TIMEOUT_MS, NETWORKS, ETH_ADDRESS } from '@nullshift/common';
-import { KeyManager, SHIELDED_POOL_ABI, computeCommitment, computeNullifier, randomFieldElement, initBarretenberg } from '@nullshift/sdk';
+import { KeyManager, MerkleTreeSync, SHIELDED_POOL_ABI, computeCommitment, computeNullifier, randomFieldElement, initBarretenberg } from '@nullshift/sdk';
 import { ethers } from 'ethers';
 
 // ---- State ----
 let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
 const keyManager = new KeyManager();
+const merkleTree = new MerkleTreeSync();
 const notes: OwnedNote[] = [];
 const activityLog: ActivityEntry[] = [];
 let notesEncryptionKey: CryptoKey | null = null;
@@ -27,7 +28,7 @@ const CONTRACTS_KEY = 'nullshift_contracts';
 
 // ---- Privileged message types (must come from extension UI, not content scripts) ----
 const PRIVILEGED_TYPES: Set<string> = new Set([
-  'CREATE_WALLET', 'UNLOCK_WALLET', 'LOCK_WALLET',
+  'CREATE_WALLET', 'IMPORT_WALLET', 'UNLOCK_WALLET', 'LOCK_WALLET',
   'SEND_SHIELDED', 'SHIELD_FUNDS', 'UNSHIELD_FUNDS',
   'GET_WALLET_STATUS', 'GET_BALANCE', 'GET_SHIELDED_BALANCE',
   'GET_PUBLIC_BALANCE', 'GET_NOTES', 'SYNC_NOTES', 'SYNC_TREE',
@@ -99,6 +100,28 @@ async function handleMessage(
       await chrome.storage.local.set({ [VAULT_KEY]: vault });
 
       // Derive encryption key for notes
+      notesEncryptionKey = await deriveNotesKey(password);
+
+      // Return mnemonic so UI can show backup screen
+      return { address: keys.ethAddress, mnemonic: keys.mnemonic };
+    }
+
+    case 'IMPORT_WALLET': {
+      const { mnemonic, password } = message.payload as { mnemonic: string; password: string };
+      if (!password || password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+      if (!mnemonic?.trim()) {
+        throw new Error('Mnemonic phrase is required');
+      }
+
+      // Import wallet from mnemonic via SDK
+      const keys = await keyManager.importWallet(mnemonic.trim(), password);
+
+      // Encrypt and store vault
+      const vault = await keyManager.encryptVault(keys, password);
+      await chrome.storage.local.set({ [VAULT_KEY]: vault });
+
       notesEncryptionKey = await deriveNotesKey(password);
 
       return { address: keys.ethAddress };
@@ -314,6 +337,12 @@ async function handleMessage(
       // Compute nullifier for this note
       const nullifier = await computeNullifier(commitment, keys.spendingKey);
 
+      // Insert into local Merkle tree and get path
+      await merkleTree.insert(commitment as Bytes32);
+      const merklePath = leafIndex >= 0
+        ? await merkleTree.getMerklePath(leafIndex)
+        : { pathIndex: leafIndex, siblings: [] as Bytes32[] };
+
       // Store note locally
       const newNote: OwnedNote = {
         commitment: commitment as Bytes32,
@@ -324,7 +353,7 @@ async function handleMessage(
         token: (depositPayload.token || ETH_ADDRESS) as Address,
         spent: false,
         nullifier: nullifier as Bytes32,
-        merklePath: { pathIndex: leafIndex, siblings: [] },
+        merklePath,
       };
       notes.push(newNote);
       await saveNotes();
@@ -458,14 +487,32 @@ async function handleMessage(
     // ---- Tree ----
     case 'SYNC_TREE': {
       try {
-        const pool = await getPoolContract();
-        const nextIndex = Number(await pool.getNextLeafIndex());
-        const currentRoot = await pool.getMerkleRoot() as string;
+        await initBarretenberg();
+        const provider = await getProvider();
+        const config = await getNetworkConfig();
+        if (!config) throw new Error('Network not configured');
 
-        // Scan for deposit events to find our notes' leaf indices
-        // Update any notes with leafIndex === -1
+        const poolAddr = config.contracts.shieldedPool;
+
+        // Sync Merkle tree from on-chain events (incremental)
+        const fromBlock = merkleTree.getLastSyncedBlock();
+        const inserted = await merkleTree.syncFromChain(provider, poolAddr, fromBlock);
+
+        const localRoot = merkleTree.getRoot();
+        const leafCount = merkleTree.getLeafCount();
+
+        // Update Merkle paths for all notes that have a leaf index
+        for (const note of notes) {
+          if (note.leafIndex >= 0 && note.leafIndex < leafCount) {
+            const path = await merkleTree.getMerklePath(note.leafIndex);
+            note.merklePath = path;
+          }
+        }
+
+        // Resolve any pending notes (leafIndex === -1) by scanning events
         const pendingNotes = notes.filter((n) => n.leafIndex === -1);
         if (pendingNotes.length > 0) {
+          const pool = await getPoolContract();
           const depositFilter = pool.filters['Deposit']!();
           const events = await pool.queryFilter(depositFilter, 0, 'latest');
 
@@ -478,15 +525,20 @@ async function handleMessage(
             for (const note of pendingNotes) {
               if (note.commitment.toLowerCase() === commitment.toLowerCase()) {
                 note.leafIndex = leafIdx;
-                note.merklePath.pathIndex = leafIdx;
+                if (leafIdx < leafCount) {
+                  const path = await merkleTree.getMerklePath(leafIdx);
+                  note.merklePath = path;
+                }
               }
             }
           }
+        }
 
+        if (inserted > 0 || pendingNotes.length > 0) {
           await saveNotes();
         }
 
-        return { newLeaves: nextIndex, root: currentRoot };
+        return { newLeaves: leafCount, root: localRoot, synced: inserted };
       } catch {
         return { newLeaves: 0 };
       }

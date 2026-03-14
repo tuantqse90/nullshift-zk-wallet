@@ -146,7 +146,7 @@ export async function derivePublicKey(secretKey: Bytes32): Promise<Bytes32> {
 /** Pre-computed zero hashes for Merkle tree (computed lazily) */
 let zeroHashes: Bytes32[] | null = null;
 
-/** Compute zero hashes for each tree level */
+/** Compute zero hashes for each tree level (Poseidon, matching circuits + contracts) */
 export async function getZeroHashes(): Promise<Bytes32[]> {
   if (zeroHashes) return zeroHashes;
 
@@ -154,7 +154,7 @@ export async function getZeroHashes(): Promise<Bytes32[]> {
   zeros[0] = bigintToField(0n);
 
   for (let i = 1; i <= MERKLE_TREE_DEPTH; i++) {
-    zeros[i] = await pedersenHash([zeros[i - 1]!, zeros[i - 1]!]);
+    zeros[i] = await poseidonHash2(zeros[i - 1]!, zeros[i - 1]!);
   }
 
   zeroHashes = zeros;

@@ -53,5 +53,8 @@ npm-debug.log*
 *.pem
 *.key
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Claude Code
 .claude/

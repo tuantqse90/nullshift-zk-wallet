@@ -239,11 +239,38 @@ function ModalOverlay({ title, onClose, children }: {
   );
 }
 
+function classifyError(err: Error): { message: string; retryable: boolean } {
+  const msg = err.message.toLowerCase();
+  if (msg.includes('insufficient') || msg.includes('balance'))
+    return { message: '[ERR] Insufficient balance', retryable: false };
+  if (msg.includes('network') || msg.includes('timeout') || msg.includes('fetch'))
+    return { message: '[ERR] Network error — check connection', retryable: true };
+  if (msg.includes('revert') || msg.includes('execution reverted'))
+    return { message: '[ERR] Transaction reverted on-chain', retryable: false };
+  if (msg.includes('proof') || msg.includes('witness'))
+    return { message: '[ERR] Proof generation failed', retryable: true };
+  if (msg.includes('locked'))
+    return { message: '[ERR] Wallet is locked', retryable: false };
+  return { message: `[ERR] ${err.message}`, retryable: true };
+}
+
+function isValidAmount(val: string): boolean {
+  const n = parseFloat(val);
+  return !isNaN(n) && n > 0 && isFinite(n);
+}
+
+function isValidAddress(val: string): boolean {
+  return /^0x[0-9a-fA-F]{40,}$/.test(val);
+}
+
 function ShieldModal({ onClose }: { onClose: () => void }) {
+  const { setBalances } = useWalletStore();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [statusType, setStatusType] = useState<'info' | 'error' | 'success'>('info');
   const [gasCost, setGasCost] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
     sendToBackground('GET_GAS_ESTIMATE', { type: 'shield' as const }, 'popup')
@@ -252,22 +279,38 @@ function ShieldModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleShield = async () => {
-    if (!amount) return;
+    if (!isValidAmount(amount)) {
+      setStatus('[ERR] Enter a valid amount > 0');
+      setStatusType('error');
+      return;
+    }
     setLoading(true);
-    setStatus('Shielding funds...');
+    setCanRetry(false);
+    setStatus('> Submitting deposit tx...');
+    setStatusType('info');
     try {
       await sendToBackground('SHIELD_FUNDS', {
         amount: BigInt(Math.floor(parseFloat(amount) * 1e18)),
         token: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       }, 'popup');
-      setStatus('Shielded successfully!');
+      setStatus('[OK] Shielded successfully!');
+      setStatusType('success');
+      // Refresh balances
+      sendToBackground('GET_BALANCE', { token: undefined }, 'popup')
+        .then((r) => setBalances(r.shielded, r.public))
+        .catch(() => {});
       setTimeout(onClose, 1500);
     } catch (err) {
-      setStatus(`Error: ${(err as Error).message}`);
+      const { message, retryable } = classifyError(err as Error);
+      setStatus(message);
+      setStatusType('error');
+      setCanRetry(retryable);
     } finally {
       setLoading(false);
     }
   };
+
+  const statusColor = statusType === 'error' ? 'text-ns-accent' : statusType === 'success' ? 'text-ns-primary' : 'text-ns-secondary';
 
   return (
     <ModalOverlay title="// shield funds" onClose={onClose}>
@@ -286,25 +329,28 @@ function ShieldModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {status && (
-        <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
+        <p className={`font-mono text-xs ${statusColor} mb-3`}>{status}</p>
       )}
       <button
         onClick={handleShield}
         disabled={loading || !amount}
         className="btn btn-primary w-full disabled:opacity-50"
       >
-        {loading ? '> Processing...' : '> Shield'}
+        {loading ? '> Processing...' : canRetry ? '> Retry' : '> Shield'}
       </button>
     </ModalOverlay>
   );
 }
 
 function SendModal({ onClose }: { onClose: () => void }) {
+  const { setBalances } = useWalletStore();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [statusType, setStatusType] = useState<'info' | 'error' | 'success'>('info');
   const [gasCost, setGasCost] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
     sendToBackground('GET_GAS_ESTIMATE', { type: 'send' as const }, 'popup')
@@ -313,23 +359,43 @@ function SendModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleSend = async () => {
-    if (!recipient || !amount) return;
+    if (!isValidAddress(recipient)) {
+      setStatus('[ERR] Invalid recipient address (0x...)');
+      setStatusType('error');
+      return;
+    }
+    if (!isValidAmount(amount)) {
+      setStatus('[ERR] Enter a valid amount > 0');
+      setStatusType('error');
+      return;
+    }
     setLoading(true);
-    setStatus('Generating ZK proof...');
+    setCanRetry(false);
+    setStatus('> Generating ZK proof...');
+    setStatusType('info');
     try {
       await sendToBackground('SEND_SHIELDED', {
         recipientPubkey: recipient as `0x${string}`,
         amount: BigInt(Math.floor(parseFloat(amount) * 1e18)),
         token: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       }, 'popup');
-      setStatus('Transfer sent!');
+      setStatus('[OK] Transfer sent!');
+      setStatusType('success');
+      sendToBackground('GET_BALANCE', { token: undefined }, 'popup')
+        .then((r) => setBalances(r.shielded, r.public))
+        .catch(() => {});
       setTimeout(onClose, 1500);
     } catch (err) {
-      setStatus(`Error: ${(err as Error).message}`);
+      const { message, retryable } = classifyError(err as Error);
+      setStatus(message);
+      setStatusType('error');
+      setCanRetry(retryable);
     } finally {
       setLoading(false);
     }
   };
+
+  const statusColor = statusType === 'error' ? 'text-ns-accent' : statusType === 'success' ? 'text-ns-primary' : 'text-ns-secondary';
 
   return (
     <ModalOverlay title="// shielded send" onClose={onClose}>
@@ -337,7 +403,7 @@ function SendModal({ onClose }: { onClose: () => void }) {
         type="text"
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
-        placeholder="Recipient public key"
+        placeholder="Recipient public key (0x...)"
         className="w-full bg-ns-bg-card border border-ns-border rounded px-3 py-2 font-mono text-sm text-ns-text-bright placeholder-ns-text-dim focus:border-ns-primary focus:outline-none mb-3"
         autoFocus
       />
@@ -355,25 +421,28 @@ function SendModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {status && (
-        <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
+        <p className={`font-mono text-xs ${statusColor} mb-3`}>{status}</p>
       )}
       <button
         onClick={handleSend}
         disabled={loading || !recipient || !amount}
         className="btn btn-primary w-full disabled:opacity-50"
       >
-        {loading ? '> Proving...' : '> Send'}
+        {loading ? '> Proving...' : canRetry ? '> Retry' : '> Send'}
       </button>
     </ModalOverlay>
   );
 }
 
 function UnshieldModal({ onClose }: { onClose: () => void }) {
+  const { setBalances } = useWalletStore();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
+  const [statusType, setStatusType] = useState<'info' | 'error' | 'success'>('info');
   const [gasCost, setGasCost] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
     sendToBackground('GET_GAS_ESTIMATE', { type: 'withdraw' as const }, 'popup')
@@ -382,23 +451,43 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleUnshield = async () => {
-    if (!recipient || !amount) return;
+    if (!isValidAddress(recipient)) {
+      setStatus('[ERR] Invalid recipient address (0x...)');
+      setStatusType('error');
+      return;
+    }
+    if (!isValidAmount(amount)) {
+      setStatus('[ERR] Enter a valid amount > 0');
+      setStatusType('error');
+      return;
+    }
     setLoading(true);
-    setStatus('Generating withdrawal proof...');
+    setCanRetry(false);
+    setStatus('> Generating withdrawal proof...');
+    setStatusType('info');
     try {
       await sendToBackground('UNSHIELD_FUNDS', {
         amount: BigInt(Math.floor(parseFloat(amount) * 1e18)),
         recipient: recipient as `0x${string}`,
         token: '0x0000000000000000000000000000000000000000' as `0x${string}`,
       }, 'popup');
-      setStatus('Withdrawal submitted!');
+      setStatus('[OK] Withdrawal submitted!');
+      setStatusType('success');
+      sendToBackground('GET_BALANCE', { token: undefined }, 'popup')
+        .then((r) => setBalances(r.shielded, r.public))
+        .catch(() => {});
       setTimeout(onClose, 1500);
     } catch (err) {
-      setStatus(`Error: ${(err as Error).message}`);
+      const { message, retryable } = classifyError(err as Error);
+      setStatus(message);
+      setStatusType('error');
+      setCanRetry(retryable);
     } finally {
       setLoading(false);
     }
   };
+
+  const statusColor = statusType === 'error' ? 'text-ns-accent' : statusType === 'success' ? 'text-ns-primary' : 'text-ns-secondary';
 
   return (
     <ModalOverlay title="// unshield (withdraw)" onClose={onClose}>
@@ -424,14 +513,14 @@ function UnshieldModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {status && (
-        <p className="font-mono text-xs text-ns-secondary mb-3">{status}</p>
+        <p className={`font-mono text-xs ${statusColor} mb-3`}>{status}</p>
       )}
       <button
         onClick={handleUnshield}
         disabled={loading || !recipient || !amount}
         className="btn btn-primary w-full disabled:opacity-50"
       >
-        {loading ? '> Proving...' : '> Withdraw'}
+        {loading ? '> Proving...' : canRetry ? '> Retry' : '> Withdraw'}
       </button>
     </ModalOverlay>
   );
